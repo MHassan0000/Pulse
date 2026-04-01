@@ -1,9 +1,7 @@
-import React from 'react'
+import Sidebar from "@/components/layout/Sidebar";
 
 const LeftSidebar = () => {
-    return (
-        <div>LeftSidebar</div>
-    )
-}
+  return <Sidebar />;
+};
 
-export default LeftSidebar
+export default LeftSidebar;

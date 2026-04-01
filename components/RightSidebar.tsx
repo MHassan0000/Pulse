@@ -1,9 +1,7 @@
-import React from 'react'
+import LayoutRightSidebar from "@/components/layout/RightSidebar";
 
 const RightSidebar = () => {
-    return (
-        <div>RightSidebar</div>
-    )
-}
+  return <LayoutRightSidebar />;
+};
 
-export default RightSidebar
+export default RightSidebar;

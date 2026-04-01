@@ -1,9 +1,7 @@
-import React from 'react'
+import LayoutBottomBar from "@/components/layout/BottomBar";
 
 const Bottombar = () => {
-    return (
-        <div>Bottombar</div>
-    )
-}
+  return <LayoutBottomBar />;
+};
 
-export default Bottombar
+export default Bottombar;

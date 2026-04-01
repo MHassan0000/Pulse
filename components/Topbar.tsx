@@ -1,9 +1,7 @@
-import React from 'react'
+import LayoutTopbar from "@/components/layout/Topbar";
 
 const Topbar = () => {
-    return (
-        <div>Topbar</div>
-    )
-}
+  return <LayoutTopbar />;
+};
 
-export default Topbar
+export default Topbar;
