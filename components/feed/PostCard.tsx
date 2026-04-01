@@ -1,6 +1,6 @@
 "use client";
 
-import { Heart, MessageCircle, Repeat2 } from "lucide-react";
+import { Heart, MessageCircle, MoreHorizontal, Repeat2 } from "lucide-react";
 import { motion } from "framer-motion";
 
 type PostCardProps = {
@@ -8,6 +8,7 @@ type PostCardProps = {
   handle: string;
   time: string;
   content: string;
+  credit?: string;
   stats: {
     likes: number;
     replies: number;
@@ -21,6 +22,7 @@ const PostCard = ({
   handle,
   time,
   content,
+  credit,
   stats,
   showMedia,
 }: PostCardProps) => {
@@ -29,19 +31,26 @@ const PostCard = ({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="rounded-2xl border border-[#1f1f1f] bg-[#0a0a0a] p-4"
+      className="bg-transparent px-5 py-5"
     >
       <div className="flex items-start gap-3">
-        <div className="h-10 w-10 rounded-full bg-zinc-800" />
+        <div className="h-11 w-11 rounded-full border border-[#2a2a2a] bg-black" />
         <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <p className="text-sm font-semibold text-white">{author}</p>
-            <span className="text-xs text-zinc-500">{handle}</span>
-            <span className="text-xs text-zinc-500">{time}</span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-semibold text-white">{author}</p>
+              <span className="text-xs text-zinc-500">{time}</span>
+            </div>
+            <button className="text-zinc-500 transition-all duration-200 hover:text-zinc-300">
+              <MoreHorizontal className="h-4 w-4" />
+            </button>
           </div>
           <p className="mt-2 text-sm text-zinc-200">{content}</p>
+          {credit ? (
+            <p className="mt-2 text-sm text-zinc-400">{credit}</p>
+          ) : null}
           {showMedia ? (
-            <div className="mt-4 h-64 rounded-xl border border-[#1f1f1f] bg-gradient-to-br from-zinc-900 via-black to-zinc-800" />
+            <div className="mt-4 h-72 rounded-2xl border border-[#1f1f1f] bg-gradient-to-br from-zinc-900 via-black to-zinc-800" />
           ) : null}
           <div className="mt-4 flex items-center gap-6 text-xs text-zinc-500">
             <button className="flex items-center gap-2 transition-all duration-200 hover:text-white">

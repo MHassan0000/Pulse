@@ -24,19 +24,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
-      <body
-        className={`${sora.variable} ${geistMono.variable} bg-black text-white antialiased`}
-      >
-        <ClerkProvider
-          publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
-          signInUrl="/sign-in"
-          signUpUrl="/sign-up"
-          clerkJSUrl="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@6/dist/clerk.browser.js"
+    <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up">
+      <html lang="en" className={`dark ${sora.variable} ${geistMono.variable}`}>
+        <body
+          className="bg-black text-white antialiased"
         >
           {children}
-        </ClerkProvider>
-      </body>
-    </html>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

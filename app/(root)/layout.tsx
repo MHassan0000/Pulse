@@ -1,8 +1,8 @@
 
-import Bottombar from "@/components/Bottombar";
-import LeftSidebar from "@/components/LeftSidebar";
-import RightSidebar from "@/components/RightSidebar";
-import Topbar from "@/components/Topbar";
+import Bottombar from "@/components/layout/BottomBar";
+import LeftSidebar from "@/components/layout/Sidebar";
+import RightSidebar from "@/components/layout/RightSidebar";
+import Topbar from "@/components/layout/Topbar";
 
 const RootLayout = ({
   children,
@@ -10,17 +10,19 @@ const RootLayout = ({
   children: React.ReactNode;
 }) => {
   return (
-    <div className="min-h-screen bg-black text-white [background:radial-gradient(1200px_circle_at_top,#111111_0%,#000000_55%)]">
+    <div className="min-h-screen bg-black text-white">
       <Topbar />
-      <div className="mx-auto flex w-full max-w-[1240px] gap-6 px-4 pb-24 pt-6 md:px-6 lg:pb-8">
-        <aside className="hidden w-60 shrink-0 md:block">
-          <LeftSidebar />
-        </aside>
-        <main className="min-w-0 flex-1">{children}</main>
-        <aside className="hidden w-[300px] shrink-0 lg:block">
-          <RightSidebar />
-        </aside>
-      </div>
+      <aside className="fixed left-0 top-14 hidden h-[calc(100vh-3.5rem)] w-[72px] bg-black md:flex">
+        <LeftSidebar />
+      </aside>
+      <aside className="fixed right-6 top-14 hidden h-[calc(100vh-3.5rem)] w-[320px] bg-black lg:flex">
+        <RightSidebar />
+      </aside>
+      <main className="pt-14 md:pl-[72px] lg:pr-[344px]">
+        <div className="mx-auto h-[calc(100vh-3.5rem)] w-full max-w-[640px] overflow-y-auto px-4 pb-24 pt-6 md:px-6 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          {children}
+        </div>
+      </main>
       <Bottombar />
     </div>
   );

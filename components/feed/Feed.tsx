@@ -3,16 +3,18 @@ import PostCard from "@/components/feed/PostCard";
 const posts = [
   {
     id: "post-1",
-    author: "visitpham",
-    handle: "@visitpham",
+    author: "footballinggods",
+    handle: "@footballinggods",
     time: "15h",
-    content: "Is a museum date the best first date, or are we biased?",
+    content:
+      "What Support for Bosnia Before the Italy Game for a World Cup Spot! 😳💥 BA",
+    credit: "Credit: Iratipratsc (X)",
     stats: {
       likes: 101,
       replies: 14,
       reposts: 4,
     },
-    showMedia: false,
+    showMedia: true,
   },
   {
     id: "post-2",
@@ -44,7 +46,7 @@ const posts = [
 
 const Feed = () => {
   return (
-    <div className="space-y-4">
+    <div className="divide-y divide-[#2a2a2a]">
       {posts.map((post) => (
         <PostCard key={post.id} {...post} />
       ))}

@@ -2,7 +2,7 @@ import { Bell, Home, Plus, Search, User } from "lucide-react";
 
 const BottomBar = () => {
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-[#1f1f1f] bg-black/80 backdrop-blur md:hidden">
+    <div className="fixed bottom-0 left-0 right-0 z-50 bg-black md:hidden">
       <div className="mx-auto flex h-14 max-w-[480px] items-center justify-around px-6">
         {[Home, Search, Plus, Bell, User].map((Icon, index) => (
           <button

@@ -3,36 +3,28 @@ import { SignInButton, SignUpButton, Show, UserButton } from "@clerk/nextjs";
 
 const Topbar = () => {
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-[#1f1f1f] bg-black/70 backdrop-blur">
-      <div className="mx-auto grid h-14 max-w-[1240px] grid-cols-3 items-center px-4 md:px-6">
+    <header className="fixed top-0 z-50 w-full bg-black">
+      <div className="mx-auto grid h-14 max-w-full grid-cols-3 items-center px-4 md:px-6">
         <div className="flex items-center gap-3">
           <Image
             src="/images/pulse-logo-new.png"
             alt="Pulse logo"
-            width={28}
-            height={28}
-            className="h-7 w-7"
+            width={40}
+            height={40}
+            className="h-12 w-12"
             priority
           />
-          <span className="text-sm font-semibold tracking-wide text-white">
-            Pulse
-          </span>
         </div>
         <div className="text-center text-sm font-semibold text-white/90">
           Home
         </div>
         <div className="flex items-center justify-end gap-3">
           <Show when="signed-out">
-            <SignInButton mode="modal">
-              <button className="rounded-full border border-[#1f1f1f] bg-[#0a0a0a] px-3 py-1.5 text-xs text-zinc-300 transition-all duration-200 hover:bg-zinc-900 active:scale-[0.98]">
-                Sign in
+            <SignInButton>
+              <button className="rounded-full border border-[#1f1f1f] bg-[#0a0a0a] px-4 py-2 text-xs text-zinc-300 transition-all duration-200 hover:bg-zinc-900 active:scale-[0.98]">
+                Log in
               </button>
             </SignInButton>
-            <SignUpButton mode="modal">
-              <button className="rounded-full border border-transparent bg-white px-3 py-1.5 text-xs font-semibold text-black transition-all duration-200 hover:bg-zinc-200 active:scale-[0.98]">
-                Sign up
-              </button>
-            </SignUpButton>
           </Show>
           <Show when="signed-in">
             <UserButton />
