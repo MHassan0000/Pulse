@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
-import { Geist_Mono, Inter } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
+import { Geist_Mono, Sora } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
+const sora = Sora({
   variable: "--font-sans",
   subsets: ["latin"],
 });
@@ -25,9 +26,16 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
-        className={`${inter.variable} ${geistMono.variable} bg-black text-white antialiased`}
+        className={`${sora.variable} ${geistMono.variable} bg-black text-white antialiased`}
       >
-        {children}
+        <ClerkProvider
+          publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+          signInUrl="/sign-in"
+          signUpUrl="/sign-up"
+          clerkJSUrl="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@6/dist/clerk.browser.js"
+        >
+          {children}
+        </ClerkProvider>
       </body>
     </html>
   );

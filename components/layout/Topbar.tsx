@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { User } from "lucide-react";
+import { SignInButton, SignUpButton, Show, UserButton } from "@clerk/nextjs";
 
 const Topbar = () => {
   return (
@@ -21,11 +21,22 @@ const Topbar = () => {
         <div className="text-center text-sm font-semibold text-white/90">
           Home
         </div>
-        <div className="flex items-center justify-end">
-          <button className="flex items-center gap-2 rounded-full border border-[#1f1f1f] bg-[#0a0a0a] px-3 py-1.5 text-xs text-zinc-300 transition-all duration-200 hover:bg-zinc-900 active:scale-[0.98]">
-            <User className="h-4 w-4" />
-            <span className="hidden sm:inline">Sign in</span>
-          </button>
+        <div className="flex items-center justify-end gap-3">
+          <Show when="signed-out">
+            <SignInButton mode="modal">
+              <button className="rounded-full border border-[#1f1f1f] bg-[#0a0a0a] px-3 py-1.5 text-xs text-zinc-300 transition-all duration-200 hover:bg-zinc-900 active:scale-[0.98]">
+                Sign in
+              </button>
+            </SignInButton>
+            <SignUpButton mode="modal">
+              <button className="rounded-full border border-transparent bg-white px-3 py-1.5 text-xs font-semibold text-black transition-all duration-200 hover:bg-zinc-200 active:scale-[0.98]">
+                Sign up
+              </button>
+            </SignUpButton>
+          </Show>
+          <Show when="signed-in">
+            <UserButton />
+          </Show>
         </div>
       </div>
     </header>

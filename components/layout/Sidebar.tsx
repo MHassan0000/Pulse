@@ -1,7 +1,7 @@
 import { Home, Plus, Search, User } from "lucide-react";
 
 const navItems = [
-  { label: "Home", icon: Home },
+  { label: "Home", icon: Home, active: true },
   { label: "Search", icon: Search },
   { label: "Create", icon: Plus },
   { label: "Profile", icon: User },
@@ -15,10 +15,13 @@ const Sidebar = () => {
           {navItems.map((item) => (
             <button
               key={item.label}
-              className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm text-zinc-200 transition-all duration-200 hover:bg-zinc-900"
+              className={`flex items-center justify-center rounded-2xl px-3 py-3 text-zinc-200 transition-all duration-200 hover:bg-zinc-900 ${
+                item.active ? "bg-zinc-900/60" : ""
+              }`}
+              aria-label={item.label}
+              title={item.label}
             >
-              <item.icon className="h-4 w-4" />
-              <span>{item.label}</span>
+              <item.icon className="h-5 w-5" />
             </button>
           ))}
         </nav>
