@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Geist_Mono, Sora } from "next/font/google";
+import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import "./globals.css";
 
 const sora = Sora({
@@ -24,14 +25,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up">
-      <html lang="en" className={`dark ${sora.variable} ${geistMono.variable}`}>
-        <body
-          className="bg-black text-white antialiased"
-        >
-          {children}
-        </body>
-      </html>
-    </ClerkProvider>
+    <html lang="en" className={`dark ${sora.variable} ${geistMono.variable}`}>
+      <body className="bg-white text-zinc-900 antialiased dark:bg-black dark:text-white">
+        <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up">
+          <ThemeProvider>{children}</ThemeProvider>
+        </ClerkProvider>
+      </body>
+    </html>
   );
 }
