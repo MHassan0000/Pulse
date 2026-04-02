@@ -19,7 +19,7 @@ const RootLayout = ({
         <RightSidebar />
       </aside>
       <main className="pt-14 md:pl-[72px] lg:pr-[340px]">
-        <div className="mx-auto flex h-[calc(100vh-3.5rem)] w-full max-w-[720px] flex-col overflow-hidden px-4 pb-6 pt-6 md:px-6">
+        <div className="mx-auto flex h-[calc(100vh-3.5rem)] w-full max-w-[720px] min-h-0 flex-col overflow-hidden px-4 pb-6 pt-6 md:px-6">
           {children}
         </div>
       </main>

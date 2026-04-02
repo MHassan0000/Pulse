@@ -14,6 +14,7 @@ import { useState } from "react";
 import { useTheme } from "@/components/theme/ThemeProvider";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 
 const navItems = [
   { label: "Home", icon: Home, active: true, path: "/" },
@@ -33,35 +34,44 @@ const Sidebar = () => {
 
       <nav className="mt-10 flex flex-1 flex-col items-center justify-center gap-4">
         {navItems.map((item) => (
-          <button
+          <motion.button
             key={item.label}
             className={`flex items-center justify-center rounded-2xl px-3 py-3 text-zinc-700 transition-all duration-200 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-900 ${item.active ? "bg-zinc-200/70 dark:bg-zinc-900/60" : ""
               }`}
             aria-label={item.label}
             title={item.label}
             onClick={() => router.push(item.path)}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            transition={{ duration: 0.1 }}
           >
             <item.icon className="h-5 w-5" />
-          </button>
+          </motion.button>
         ))}
       </nav>
       <div className="grid gap-3 pb-2">
-        <button
+        <motion.button
           className="flex items-center justify-center rounded-2xl px-3 py-3 text-zinc-500 transition-all duration-200 hover:bg-zinc-100 dark:hover:bg-zinc-900"
           aria-label="Saved"
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          transition={{ duration: 0.1 }}
         >
           <MapPin className="h-5 w-5" />
-        </button>
-        <button
+        </motion.button>
+        <motion.button
           className="flex items-center justify-center rounded-2xl px-3 py-3 text-zinc-500 transition-all duration-200 hover:bg-zinc-100 dark:hover:bg-zinc-900"
           aria-label="More"
           onClick={() => {
             setMenuOpen((prev) => !prev);
             setAppearanceOpen(false);
           }}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          transition={{ duration: 0.1 }}
         >
           <AlignJustify className="h-5 w-5" />
-        </button>
+        </motion.button>
       </div>
       {menuOpen && (
         <div className="absolute bottom-16 left-16 w-56 rounded-2xl border border-zinc-200 bg-white p-2 shadow-xl dark:border-[#1f1f1f] dark:bg-[#111111] z-50 animate-in fade-in slide-in-from-bottom-4 zoom-in-95 duration-200">
