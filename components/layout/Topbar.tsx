@@ -11,7 +11,7 @@ const Topbar = () => {
             alt="Pulse logo"
             width={40}
             height={40}
-            className="h-12 w-12 invert dark:invert-0"
+            className="h-12 w-12 invert dark:invert-0 hover:scale-110 transition-all duration-400 cursor-pointer"
             priority
           />
         </div>
