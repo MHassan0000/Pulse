@@ -1,23 +1,21 @@
-"use client";
-
-import { useUser } from "@clerk/nextjs";
+import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 
 import { fetchUser } from "@/lib/actions/user.actions";
 import AccountProfile from "@/components/forms/AccountProfile";
 
 const Page = async () => {
-  const { user } = useUser();
+  const user = await currentUser();
 
-  if (!user) return null;
+  if (!user) redirect("/sign-in");
 
   const userInfo = await fetchUser(user.id);
   if (userInfo?.onboarded) redirect("/");
 
   const userData = {
     id: user.id,
-    objectId: userInfo?._id,
-    username: userInfo ? userInfo?.username : user.username,
+    objectId: userInfo?._id?.toString() ?? "",
+    username: userInfo ? userInfo?.username : user.username ?? "",
     name: userInfo ? userInfo?.name : user.firstName ?? "",
     bio: userInfo ? userInfo?.bio : "",
     image: userInfo ? userInfo?.image : user.imageUrl,

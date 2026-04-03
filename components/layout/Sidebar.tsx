@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+
 import {
   AlignJustify,
   Heart,
@@ -15,7 +15,7 @@ import { useTheme } from "@/components/theme/ThemeProvider";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-
+import Link from "next/link";
 const navItems = [
   { label: "Home", icon: Home, active: true, path: "/" },
   { label: "Search", icon: Search, path: "/search" },
@@ -36,7 +36,7 @@ const Sidebar = () => {
         {navItems.map((item) => (
           <motion.button
             key={item.label}
-            className={`flex items-center justify-center rounded-2xl px-3 py-3 text-zinc-700 transition-all duration-200 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-900 ${item.active ? "bg-zinc-200/70 dark:bg-zinc-900/60" : ""
+            className={`flex items-center justify-center rounded-2xl px-3 py-3 text-zinc-700 transition-all duration-200 hover:bg-zinc-100 cursor-pointer dark:text-zinc-200 dark:hover:bg-zinc-900 ${item.active ? "bg-zinc-200/70 dark:bg-zinc-900/60" : ""
               }`}
             aria-label={item.label}
             title={item.label}
@@ -50,17 +50,19 @@ const Sidebar = () => {
         ))}
       </nav>
       <div className="grid gap-3 pb-2">
+        <Link href="/communities">
+          <motion.button
+            className="flex items-center justify-center rounded-2xl px-3 py-3 text-zinc-500 transition-all duration-200 hover:bg-zinc-100 dark:hover:bg-zinc-900 cursor-pointer"
+            aria-label="Saved"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            transition={{ duration: 0.1 }}
+          >
+            <Globe className="h-5 w-5" />
+          </motion.button>
+        </Link>
         <motion.button
-          className="flex items-center justify-center rounded-2xl px-3 py-3 text-zinc-500 transition-all duration-200 hover:bg-zinc-100 dark:hover:bg-zinc-900"
-          aria-label="Saved"
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          transition={{ duration: 0.1 }}
-        >
-          <Globe className="h-5 w-5" />
-        </motion.button>
-        <motion.button
-          className="flex items-center justify-center rounded-2xl px-3 py-3 text-zinc-500 transition-all duration-200 hover:bg-zinc-100 dark:hover:bg-zinc-900"
+          className="flex items-center justify-center rounded-2xl px-3 py-3 cursor-pointer text-zinc-500 transition-all duration-200 hover:bg-zinc-100 dark:hover:bg-zinc-900"
           aria-label="More"
           onClick={() => {
             setMenuOpen((prev) => !prev);
