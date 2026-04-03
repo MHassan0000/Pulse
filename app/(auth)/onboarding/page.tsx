@@ -1,26 +1,26 @@
 "use client";
 
 import { useUser } from "@clerk/nextjs";
-// import { redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 
-// import { fetchUser } from "@/lib/actions/user.actions";
+import { fetchUser } from "@/lib/actions/user.actions";
 import AccountProfile from "@/components/forms/AccountProfile";
 
-const Page = () => {
+const Page = async () => {
   const { user } = useUser();
 
   if (!user) return null;
 
-  // const userInfo = await fetchUser(user.id);
-  // if (userInfo?.onboarded) redirect("/");
+  const userInfo = await fetchUser(user.id);
+  if (userInfo?.onboarded) redirect("/");
 
   const userData = {
     id: user.id,
-    objectId: "",
-    username: user.username ?? "",
-    name: user.firstName ?? "",
-    bio: "",
-    image: user.imageUrl,
+    objectId: userInfo?._id,
+    username: userInfo ? userInfo?.username : user.username,
+    name: userInfo ? userInfo?.name : user.firstName ?? "",
+    bio: userInfo ? userInfo?.bio : "",
+    image: userInfo ? userInfo?.image : user.imageUrl,
   };
 
   return (
