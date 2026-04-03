@@ -1,6 +1,6 @@
 "use server";
 
-import{ SortOrder } from "mongoose";
+import mongoose, { SortOrder, InferSchemaType } from "mongoose";
 import { revalidatePath } from "next/cache";
 
 import Community from "../models/community.model";
@@ -8,11 +8,11 @@ import Thread from "../models/thread.model";
 import User from "../models/user.model";
 
 import { connectToDB } from "../mongoose";
-import type { FilterQuery } from "mongoose";
+
 
 export async function fetchUser(userId: string) {
   try {
-    connectToDB();
+    await connectToDB();
 
     return await User.findOne({ id: userId }).populate({
       path: "communities",
@@ -41,7 +41,7 @@ export async function updateUser({
   image,
 }: Params): Promise<void> {
   try {
-    connectToDB();
+    await connectToDB();
 
     await User.findOneAndUpdate(
       { id: userId },
@@ -65,7 +65,7 @@ export async function updateUser({
 
 export async function fetchUserPosts(userId: string) {
   try {
-    connectToDB();
+    await connectToDB();
 
     // Find all threads authored by the user with the given userId
     const threads = await User.findOne({ id: userId }).populate({
@@ -110,7 +110,7 @@ export async function fetchUsers({
   sortBy?: SortOrder;
 }) {
   try {
-    connectToDB();
+    await connectToDB();
 
     // Calculate the number of users to skip based on the page number and page size.
     const skipAmount = (pageNumber - 1) * pageSize;
@@ -119,7 +119,9 @@ export async function fetchUsers({
     const regex = new RegExp(searchString, "i");
 
     // Create an initial query object to filter users.
-    const query: FilterQuery<typeof User> = {
+    type UserDocument = InferSchemaType<typeof User.schema>;
+
+    const query: mongoose.AnyObject = {
       id: { $ne: userId }, // Exclude the current user from the results.
     };
 
@@ -156,7 +158,7 @@ export async function fetchUsers({
 
 export async function getActivity(userId: string) {
   try {
-    connectToDB();
+    await connectToDB();
 
     // Find all threads created by the user
     const userThreads = await Thread.find({ author: userId });

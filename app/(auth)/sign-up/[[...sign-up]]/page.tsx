@@ -16,7 +16,12 @@ const SignUpPage = () => {
               Create your account and post your first thread.
             </p>
           </div>
-          <SignUp routing="path" path="/sign-up" signInUrl="/sign-in" />
+          <SignUp
+            routing="path"
+            path="/sign-up"
+            signInUrl="/sign-in"
+            forceRedirectUrl="/onboarding"
+          />
         </div>
       </div>
     </div>

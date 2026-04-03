@@ -5,7 +5,7 @@ import {
   AlignJustify,
   Heart,
   Home,
-  MapPin,
+  Globe,
   Plus,
   Search,
   User,
@@ -57,7 +57,7 @@ const Sidebar = () => {
           whileTap={{ scale: 0.9 }}
           transition={{ duration: 0.1 }}
         >
-          <MapPin className="h-5 w-5" />
+          <Globe className="h-5 w-5" />
         </motion.button>
         <motion.button
           className="flex items-center justify-center rounded-2xl px-3 py-3 text-zinc-500 transition-all duration-200 hover:bg-zinc-100 dark:hover:bg-zinc-900"
