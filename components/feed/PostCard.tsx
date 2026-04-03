@@ -50,7 +50,7 @@ const PostCard = ({
             <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">{credit}</p>
           ) : null}
           {showMedia ? (
-            <div className="mt-4 h-72 rounded-2xl border border-zinc-200 bg-gradient-to-br from-zinc-200 via-white to-zinc-100 dark:border-[#1f1f1f] dark:from-zinc-900 dark:via-black dark:to-zinc-800" />
+            <div className="mt-4 h-72 rounded-2xl border border-zinc-200 bg-linear-to-br from-zinc-200 via-white to-zinc-100 dark:border-[#1f1f1f] dark:from-zinc-900 dark:via-black dark:to-zinc-800" />
           ) : null}
           <div className="mt-4 flex items-center gap-6 text-xs text-zinc-500">
             <button className="flex items-center gap-2 transition-all duration-200 hover:text-zinc-900 dark:hover:text-white">
