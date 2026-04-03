@@ -1,7 +1,7 @@
 import PostCard from "@/components/feed/PostCard";
 import { posts } from "@/constants";
 
-
+//implement fetchoposts function here
 
 const Feed = () => {
   return (
