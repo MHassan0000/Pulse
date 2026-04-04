@@ -13,7 +13,7 @@ const CreateThread = async () => {
     if (!userInfo?.onboarded) redirect("/onboarding");
 
     return (
-    <main className="h-full overflow-y-auto bg-white text-zinc-900 dark:bg-black dark:text-white">
+    <main className="page-scroll h-full overflow-y-auto bg-white text-zinc-900 dark:bg-black dark:text-white">
       <div className="mx-auto flex max-w-3xl flex-col px-6 pb-24 pt-20 md:pt-24">
         <div className="rounded-3xl border border-zinc-200 bg-white/80 p-6 shadow-[0_0_60px_rgba(0,0,0,0.06)] md:p-8 dark:border-[#1f1f1f] dark:bg-[#0f0f0f] dark:shadow-[0_0_60px_rgba(255,255,255,0.05)]">
                     <div className="mb-8">

@@ -209,7 +209,7 @@ const AccountProfile = ({ user, btnTitle }: Props) => {
 
         <Button
           type="submit"
-          className="w-full rounded-2xl bg-zinc-900 text-white transition-all duration-200 hover:bg-black dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+          className="w-full rounded-2xl bg-zinc-900 text-white transition-all duration-200 hover:bg-black dark:bg-white dark:text-black dark:hover:bg-zinc-200   cursor-pointer"
         >
           {btnTitle}
         </Button>
