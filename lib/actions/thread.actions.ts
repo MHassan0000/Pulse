@@ -9,7 +9,7 @@ import Thread from "../models/thread.model";
 import Community from "../models/community.model";
 
 export async function fetchPosts(pageNumber = 1, pageSize = 20) {
-  connectToDB();
+  await connectToDB();
 
   // Calculate the number of posts to skip based on the page number and page size.
   const skipAmount = (pageNumber - 1) * pageSize;
@@ -22,10 +22,12 @@ export async function fetchPosts(pageNumber = 1, pageSize = 20) {
     .populate({
       path: "author",
       model: User,
+      select: "_id id name username image",
     })
     .populate({
       path: "community",
       model: Community,
+      select: "_id id name image",
     })
     .populate({
       path: "children", // Populate the children field
@@ -34,7 +36,8 @@ export async function fetchPosts(pageNumber = 1, pageSize = 20) {
         model: User,
         select: "_id name parentId image", // Select only _id and username fields of the author
       },
-    });
+    })
+    .lean();
 
   // Count the total number of top-level posts (threads) i.e., threads that are not comments.
   const totalPostsCount = await Thread.countDocuments({

@@ -1,13 +1,26 @@
 "use client";
 
+import Image from "next/image";
 import { Heart, MessageCircle, MoreHorizontal, Repeat2 } from "lucide-react";
 import { motion } from "framer-motion";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 type PostCardProps = {
+  id?: string;
+  currentUserId?: string;
+  parentId?: string | null;
   author: string;
+  avatarUrl?: string;
   handle: string;
-  time: string;
   content: string;
+  community?: {
+    id?: string;
+    name?: string;
+    image?: string;
+  } | null;
+  createdAt?: string | Date;
+  comments?: Array<unknown>;
   credit?: string;
   stats: {
     likes: number;
@@ -19,8 +32,9 @@ type PostCardProps = {
 
 const PostCard = ({
   author,
+  avatarUrl,
   handle,
-  time,
+  createdAt,
   content,
   credit,
   stats,
@@ -34,18 +48,76 @@ const PostCard = ({
       className="bg-transparent px-5 py-5"
     >
       <div className="flex items-start gap-3">
-        <div className="h-11 w-11 rounded-full border border-zinc-200 bg-zinc-100 dark:border-[#2a2a2a] dark:bg-black" />
+        <div className="h-11 w-11 overflow-hidden rounded-full border border-zinc-200 bg-zinc-100 dark:border-[#2a2a2a] dark:bg-black">
+          {avatarUrl ? (
+            <Image
+              src={avatarUrl}
+              alt={`${author} profile`}
+              width={44}
+              height={44}
+              className="h-full w-full object-cover"
+            />
+          ) : null}
+        </div>
         <div className="flex-1">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <p className="text-sm font-semibold text-zinc-900 dark:text-white">{author}</p>
-              <span className="text-xs text-zinc-500">{time}</span>
+              {createdAt ? (
+                <span className="text-xs text-zinc-500">
+                  {new Date(createdAt).toLocaleString(undefined, {
+                    hour: "numeric",
+                    minute: "2-digit",
+                    month: "short",
+                    day: "numeric",
+                  })}
+                </span>
+              ) : null}
             </div>
             <button className="text-zinc-500 transition-all duration-200 hover:text-zinc-700 dark:hover:text-zinc-300">
               <MoreHorizontal className="h-4 w-4" />
             </button>
           </div>
-          <p className="mt-2 text-sm text-zinc-700 dark:text-zinc-200">{content}</p>
+          <div className="mt-2 text-sm text-zinc-700 dark:text-zinc-200">
+            <ReactMarkdown
+              className="markdown-content"
+              remarkPlugins={[remarkGfm]}
+              skipHtml
+              allowedElements={[
+                "p",
+                "br",
+                "strong",
+                "em",
+                "del",
+                "blockquote",
+                "code",
+                "pre",
+                "ul",
+                "ol",
+                "li",
+                "hr",
+                "a",
+                "h1",
+                "h2",
+                "h3",
+                "h4",
+              ]}
+              components={{
+                a: ({ children, ...props }) => (
+                  <a
+                    {...props}
+                    className="markdown-link"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {children}
+                  </a>
+                ),
+              }}
+            >
+              {content}
+            </ReactMarkdown>
+          </div>
           {credit ? (
             <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">{credit}</p>
           ) : null}
