@@ -34,6 +34,9 @@ const Sidebar = () => {
 
       <nav className="mt-10 flex flex-1 flex-col items-center justify-center gap-4">
         {navItems.map((item) => (
+
+
+
           <motion.button
             key={item.label}
             className={`flex items-center justify-center rounded-2xl px-3 py-3 text-zinc-700 transition-all duration-200 hover:bg-zinc-100 cursor-pointer dark:text-zinc-200 dark:hover:bg-zinc-900 ${item.active ? "bg-zinc-200/70 dark:bg-zinc-900/60" : ""
