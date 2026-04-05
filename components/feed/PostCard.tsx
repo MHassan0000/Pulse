@@ -5,41 +5,43 @@ import { Heart, MessageCircle, MoreHorizontal, Repeat2 } from "lucide-react";
 import { motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import Link from "next/link";
 
 type PostCardProps = {
-  id?: string;
-  currentUserId?: string;
-  parentId?: string | null;
-  author: string;
-  avatarUrl?: string;
-  handle: string;
+  id: string;
+  currentUserId: string;
+  parentId: string | null;
   content: string;
-  community?: {
-    id?: string;
-    name?: string;
-    image?: string;
-  } | null;
-  createdAt?: string | Date;
-  comments?: Array<unknown>;
-  credit?: string;
-  stats: {
-    likes: number;
-    replies: number;
-    reposts: number;
+  author: {
+    name: string;
+    image: string;
+    id: string;
   };
-  showMedia?: boolean;
+  community: {
+    id: string;
+    name: string;
+    image: string;
+  } | null;
+  createdAt: string;
+  comments: {
+    author: {
+      image: string;
+    };
+  }[];
+  isComment?: boolean;
 };
 
 const PostCard = ({
   author,
-  avatarUrl,
-  handle,
   createdAt,
   content,
-  credit,
-  stats,
-  showMedia,
+  comments,
 }: PostCardProps) => {
+  const stats = {
+    likes: 0,
+    replies: comments?.length ?? 0,
+    reposts: 0,
+  };
   return (
     <motion.article
       initial={{ opacity: 0, y: 10 }}
@@ -49,20 +51,23 @@ const PostCard = ({
     >
       <div className="flex items-start gap-3">
         <div className="h-11 w-11 overflow-hidden rounded-full border border-zinc-200 bg-zinc-100 dark:border-[#2a2a2a] dark:bg-black">
-          {avatarUrl ? (
-            <Image
-              src={avatarUrl}
-              alt={`${author} profile`}
-              width={44}
-              height={44}
-              className="h-full w-full object-cover"
-            />
+          {author.image ? (
+            <Link href={`/profile/${author.id}`}>
+
+              <Image
+                src={author.image}
+                alt={`${author.name} profile`}
+                width={44}
+                height={44}
+                className="h-full w-full object-cover"
+              />
+            </Link>
           ) : null}
         </div>
         <div className="flex-1">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <p className="text-sm font-semibold text-zinc-900 dark:text-white">{author}</p>
+              <p className="text-sm font-semibold text-zinc-900 dark:text-white">{author.name}</p>
               {createdAt ? (
                 <span className="text-xs text-zinc-500">
                   {new Date(createdAt).toLocaleString(undefined, {
@@ -118,12 +123,6 @@ const PostCard = ({
               {content}
             </ReactMarkdown>
           </div>
-          {credit ? (
-            <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">{credit}</p>
-          ) : null}
-          {showMedia ? (
-            <div className="mt-4 h-72 rounded-2xl border border-zinc-200 bg-linear-to-br from-zinc-200 via-white to-zinc-100 dark:border-[#1f1f1f] dark:from-zinc-900 dark:via-black dark:to-zinc-800" />
-          ) : null}
           <div className="mt-4 flex items-center gap-6 text-xs text-zinc-500">
             <button className="flex items-center gap-2 transition-all duration-200 hover:text-zinc-900 dark:hover:text-white">
               <Heart className="h-4 w-4" />

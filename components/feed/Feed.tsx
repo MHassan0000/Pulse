@@ -34,29 +34,26 @@ const Feed = async ({
       id: post._id?.toString?.() ?? "",
       parentId: post.parentId ?? null,
       content: post.text ?? "",
-      authorName: author.name ?? "Unknown",
-      authorHandle: author.username
-        ? `@${author.username}`
-        : author.id
-          ? `@${author.id}`
-          : "@user",
-      authorImage: author.image ?? undefined,
+      author: {
+        name: author.name ?? "Unknown",
+        image: author.image ?? "",
+        id: author.id ?? author._id?.toString?.() ?? "",
+      },
       community: community
         ? {
-            id: community.id ?? community._id?.toString?.(),
-            name: community.name,
-            image: community.image,
+            id: community.id ?? community._id?.toString?.() ?? "",
+            name: community.name ?? "",
+            image: community.image ?? "",
           }
         : null,
-      createdAt,
+      createdAt: createdAt ?? "",
       comments: Array.isArray(post.children)
-        ? post.children.map((child: any) => child?._id?.toString?.() ?? "")
+        ? post.children.map((child: any) => ({
+            author: {
+              image: child?.author?.image ?? "",
+            },
+          }))
         : [],
-      stats: {
-        likes: Array.isArray(post.likes) ? post.likes.length : 0,
-        replies: Array.isArray(post.children) ? post.children.length : 0,
-        reposts: Array.isArray(post.reposts) ? post.reposts.length : 0,
-      },
     };
   });
 
@@ -66,17 +63,13 @@ const Feed = async ({
         <PostCard
           key={post.id}
           id={post.id}
-          currentUserId={currentUserId ?? undefined}
+          currentUserId={currentUserId ?? ""}
           parentId={post.parentId}
-          author={post.authorName}
-          avatarUrl={post.authorImage}
-          handle={post.authorHandle}
           content={post.content}
+          author={post.author}
           community={post.community}
           createdAt={post.createdAt}
           comments={post.comments}
-          stats={post.stats}
-          showMedia={false}
         />
       ))}
       <div className="flex items-center justify-between px-5 py-6 text-xs text-zinc-500">
