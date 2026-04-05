@@ -48,7 +48,6 @@ const PostCard = ({
   id,
   author,
   currentUserId,
-  parentId,
   createdAt,
   content,
   comments,

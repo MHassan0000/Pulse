@@ -14,9 +14,9 @@ export const revalidate = 0;
 
 export default async function Home({ searchParams }: HomeProps) {
   const { userId } = await auth();
+  const userInfo = userId ? await fetchUser(userId) : null;
 
   if (userId) {
-    const userInfo = await fetchUser(userId);
     if (!userInfo?.onboarded) {
       redirect("/onboarding");
     }
@@ -29,7 +29,11 @@ export default async function Home({ searchParams }: HomeProps) {
     <div className="flex h-full w-full flex-col min-h-0">
       <div className="flex-1 min-h-0 rounded-3xl border border-zinc-200 bg-white dark:border-[#1f1f1f] dark:bg-[#111111]">
         <div className="h-full overflow-y-auto pb-24 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-          <Feed pageNumber={safePageNumber} pageSize={10} currentUserId={userId} />
+          <Feed
+            pageNumber={safePageNumber}
+            pageSize={10}
+            currentUserId={userInfo?.id ?? ""}
+          />
         </div>
       </div>
     </div>

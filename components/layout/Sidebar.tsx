@@ -13,11 +13,13 @@ import {
 import { useState } from "react";
 import { useTheme } from "@/components/theme/ThemeProvider";
 import { cn } from "@/lib/utils";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { useAuth } from "@clerk/nextjs";
+
 const navItems = [
-  { label: "Home", icon: Home, active: true, path: "/" },
+  { label: "Home", icon: Home, path: "/" },
   { label: "Search", icon: Search, path: "/search" },
   { label: "Create", icon: Plus, path: "/create" },
   { label: "Activity", icon: Heart, path: "/activity" },
@@ -29,6 +31,23 @@ const Sidebar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
+  const { userId } = useAuth();
+
+  const resolvePath = (path: string) => {
+    if (path !== "/profile") return path;
+    return userId ? `/profile/${userId}` : "/sign-in";
+  };
+
+  const isActiveRoute = (path: string) => {
+    const resolved = resolvePath(path);
+    if (path === "/profile") {
+      return pathname.startsWith("/profile");
+    }
+    if (resolved === "/") return pathname === "/";
+    return pathname.startsWith(resolved);
+  };
+
   return (
     <div className="relative flex h-full w-full flex-col items-center py-6">
 
@@ -39,11 +58,11 @@ const Sidebar = () => {
 
           <motion.button
             key={item.label}
-            className={`flex items-center justify-center rounded-2xl px-3 py-3 text-zinc-700 transition-all duration-200 hover:bg-zinc-100 cursor-pointer dark:text-zinc-200 dark:hover:bg-zinc-900 ${item.active ? "bg-zinc-200/70 dark:bg-zinc-900/60" : ""
+            className={`flex items-center justify-center rounded-2xl px-3 py-3 text-zinc-700 transition-all duration-200 hover:bg-zinc-100 cursor-pointer dark:text-zinc-200 dark:hover:bg-zinc-900 ${isActiveRoute(item.path) ? "bg-zinc-200/70 dark:bg-zinc-900/60" : ""
               }`}
             aria-label={item.label}
             title={item.label}
-            onClick={() => router.push(item.path)}
+            onClick={() => router.push(resolvePath(item.path))}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             transition={{ duration: 0.1 }}

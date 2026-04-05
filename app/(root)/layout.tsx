@@ -1,7 +1,7 @@
 
 import Bottombar from "@/components/layout/BottomBar";
+import ConditionalRightSidebar from "@/components/layout/ConditionalRightSidebar";
 import LeftSidebar from "@/components/layout/Sidebar";
-import RightSidebar from "@/components/layout/RightSidebar";
 import Topbar from "@/components/layout/Topbar";
 
 const RootLayout = ({
@@ -15,10 +15,8 @@ const RootLayout = ({
       <aside className="fixed left-0 top-14 hidden h-[calc(100vh-3.5rem)] w-18 bg-white dark:bg-black md:flex">
         <LeftSidebar />
       </aside>
-      <aside className="fixed right-4 top-14 hidden h-[calc(100vh-3.5rem)] w-[320px] bg-white dark:bg-black lg:flex">
-        <RightSidebar />
-      </aside>
-      <main className="pt-14 md:pl-18 lg:pr-85">
+      <ConditionalRightSidebar />
+      <main className="pt-14 md:pl-18">
         <div className="mx-auto flex h-[calc(100vh-3.5rem)] w-full max-w-180 min-h-0 flex-col overflow-hidden px-4 pb-6 pt-6 md:px-6">
           {children}
         </div>

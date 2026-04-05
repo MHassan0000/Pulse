@@ -42,4 +42,18 @@ export const posts = [
   },
 ];
 
+export const profileTabs = [
+  {
+    label: "Threads",
+    value: "threads",
+  },
+  {
+    label: "Replies",
+    value: "replies",
+  },
+  {
+    label: "Media",
+    value: "media",
+  },
+];
 

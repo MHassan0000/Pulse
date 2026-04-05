@@ -80,7 +80,7 @@ async function Page({
       <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-[0_20px_60px_rgba(0,0,0,0.08)] dark:border-[#1f1f1f] dark:bg-[#0f0f0f]">
         <PostCard
           id={threadData.id}
-          currentUserId={user.id}
+          currentUserId={userInfo.id}
           parentId={threadData.parentId}
           content={threadData.content}
           author={threadData.author}
@@ -116,7 +116,7 @@ async function Page({
               </div>
               <PostCard
                 id={childItem._id ? String(childItem._id) : ""}
-                currentUserId={user.id}
+                currentUserId={userInfo.id}
                 parentId={childItem.parentId ?? null}
                 content={childItem.text ?? ""}
                 author={{

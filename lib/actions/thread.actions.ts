@@ -253,6 +253,11 @@ export async function addCommentToThread(
     // Save the comment thread to the database
     const savedCommentThread = await commentThread.save();
 
+    // Keep user-thread relation updated for replies/profile tabs
+    await User.findByIdAndUpdate(userId, {
+      $push: { threads: savedCommentThread._id },
+    });
+
     // Add the comment thread's ID to the original thread's children array
     originalThread.children.push(savedCommentThread._id);
 
