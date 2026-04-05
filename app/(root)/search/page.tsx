@@ -3,7 +3,7 @@ import { currentUser } from "@clerk/nextjs/server";
 
 import UserCard from "@/components/search/UserCard";
 import Searchbar from "@/components/search/Searchbar";
-import Pagination from "@/components/search/Pagination";
+import Pagination from "@/components/layout/Pagination";
 
 import { fetchUser, fetchUsers } from "@/lib/actions/user.actions";
 

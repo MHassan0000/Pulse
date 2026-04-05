@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { Button } from "../ui/button";
 
@@ -12,6 +12,7 @@ interface Props {
 
 function Pagination({ pageNumber, isNext, path }: Props) {
     const router = useRouter();
+    const searchParams = useSearchParams();
 
     const handleNavigation = (type: string) => {
         let nextPageNumber = pageNumber;
@@ -22,29 +23,34 @@ function Pagination({ pageNumber, isNext, path }: Props) {
             nextPageNumber = pageNumber + 1;
         }
 
+        const params = new URLSearchParams(searchParams.toString());
+
         if (nextPageNumber > 1) {
-            router.push(`/${path}?page=${nextPageNumber}`);
+            params.set("page", String(nextPageNumber));
         } else {
-            router.push(`/${path}`);
+            params.delete("page");
         }
+
+        const query = params.toString();
+        router.push(query ? `/${path}?${query}` : `/${path}`);
     };
 
     if (!isNext && pageNumber === 1) return null;
 
     return (
-        <div className='pagination'>
+        <div className='mt-10 flex items-center justify-center gap-3'>
             <Button
                 onClick={() => handleNavigation("prev")}
                 disabled={pageNumber === 1}
-                className='!text-small-regular text-light-2'
+                className='rounded-full border border-zinc-200 px-4 py-2 text-xs font-semibold text-zinc-700 transition-all duration-200 hover:bg-zinc-100 disabled:pointer-events-none disabled:opacity-40 dark:border-[#1f1f1f] dark:text-zinc-200 dark:hover:bg-zinc-900'
             >
                 Prev
             </Button>
-            <p className='text-small-semibold text-light-1'>{pageNumber}</p>
+            <p className='rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold text-zinc-600 dark:border-[#1f1f1f] dark:bg-black dark:text-zinc-300'>{pageNumber}</p>
             <Button
                 onClick={() => handleNavigation("next")}
                 disabled={!isNext}
-                className='!text-small-regular text-light-2'
+                className='rounded-full border border-zinc-200 px-4 py-2 text-xs font-semibold text-zinc-700 transition-all duration-200 hover:bg-zinc-100 disabled:pointer-events-none disabled:opacity-40 dark:border-[#1f1f1f] dark:text-zinc-200 dark:hover:bg-zinc-900'
             >
                 Next
             </Button>
