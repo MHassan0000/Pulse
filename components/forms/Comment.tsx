@@ -40,7 +40,7 @@ function Comment({ threadId, currentUserImg, currentUserId }: Props) {
         await addCommentToThread(
             threadId,
             values.thread,
-            JSON.parse(currentUserId),
+            currentUserId,
             pathname
         );
 
@@ -82,7 +82,7 @@ function Comment({ threadId, currentUserImg, currentUserId }: Props) {
                 <div className="flex items-center justify-end">
                     <Button
                         type="submit"
-                        className="rounded-full bg-zinc-900 px-6 py-2 text-xs font-semibold text-white transition-all duration-200 hover:bg-black dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+                        className="rounded-full bg-zinc-900 px-6 py-2 text-xs font-semibold text-white transition-all duration-200 hover:bg-black dark:bg-white dark:text-black dark:hover:bg-zinc-200 cursor-pointer"
                     >
                         Reply
                     </Button>

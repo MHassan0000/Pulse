@@ -1,9 +1,11 @@
-import React from 'react'
+const CommunityIdPage = async ({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) => {
+  const { id } = await params;
 
-const CommunityIdPage = () => {
-    return (
-        <div>CommunityIdPage</div>
-    )
-}
+  return <div>CommunityIdPage {id}</div>;
+};
 
-export default CommunityIdPage
+export default CommunityIdPage;

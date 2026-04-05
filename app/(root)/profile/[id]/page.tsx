@@ -1,9 +1,11 @@
-import React from 'react'
+const ProfilePage = async ({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) => {
+  const { id } = await params;
 
-const ProfilePage = () => {
-    return (
-        <div>ProfilePage</div>
-    )
-}
+  return <div>ProfilePage {id}</div>;
+};
 
-export default ProfilePage
+export default ProfilePage;

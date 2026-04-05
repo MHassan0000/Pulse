@@ -30,8 +30,10 @@ const Feed = async ({
       ? new Date(post.createdAt).toISOString()
       : undefined;
 
+    const postId = post._id ? String(post._id) : post.id ? String(post.id) : "";
+
     return {
-      id: post._id?.toString?.() ?? "",
+      id: postId,
       parentId: post.parentId ?? null,
       content: post.text ?? "",
       author: {

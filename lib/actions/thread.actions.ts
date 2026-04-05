@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import mongoose from "mongoose";
 import { connectToDB } from "../mongoose";
 
 import User from "../models/user.model";
@@ -58,10 +59,14 @@ interface Params {
   path: string,
 }
 
-export async function createThread({ text, author, communityId, path }: Params
-) {
+export async function createThread({
+  text,
+  author,
+  communityId,
+  path,
+}: Params) {
   try {
-    connectToDB();
+    await connectToDB();
 
     const communityIdObject = await Community.findOne(
       { id: communityId },
@@ -87,12 +92,14 @@ export async function createThread({ text, author, communityId, path }: Params
     }
 
     revalidatePath(path);
+    return createdThread._id?.toString();
   } catch (error: any) {
     throw new Error(`Failed to create thread: ${error.message}`);
   }
 }
 
 async function fetchAllChildThreads(threadId: string): Promise<any[]> {
+  await connectToDB();
   const childThreads = await Thread.find({ parentId: threadId });
 
   const descendantThreads = [];
@@ -106,7 +113,7 @@ async function fetchAllChildThreads(threadId: string): Promise<any[]> {
 
 export async function deleteThread(id: string, path: string): Promise<void> {
   try {
-    connectToDB();
+    await connectToDB();
 
     // Find the thread to be deleted (the main thread)
     const mainThread = await Thread.findById(id).populate("author community");
@@ -161,10 +168,12 @@ export async function deleteThread(id: string, path: string): Promise<void> {
 }
 
 export async function fetchThreadById(threadId: string) {
-  connectToDB();
+  await connectToDB();
 
   try {
-    const thread = await Thread.findById(threadId)
+    const normalizedId =
+      threadId?.match?.(/[a-f0-9]{24}/i)?.[0] ?? threadId;
+    const thread = await Thread.findById(normalizedId)
       .populate({
         path: "author",
         model: User,
@@ -194,6 +203,20 @@ export async function fetchThreadById(threadId: string) {
           },
         ],
       })
+      .populate({
+        path: "children",
+        populate: {
+          path: "children",
+          populate: {
+            path: "children",
+            populate: {
+              path: "author",
+              model: User,
+              select: "_id id name parentId image",
+            },
+          },
+        },
+      })
       .lean()
       .exec();
 
@@ -210,7 +233,7 @@ export async function addCommentToThread(
   userId: string,
   path: string
 ) {
-  connectToDB();
+  await connectToDB();
 
   try {
     // Find the original thread by its ID

@@ -1,13 +1,24 @@
 "use client";
 
 import Image from "next/image";
-import type { SyntheticEvent } from "react";
 import { Heart, MessageCircle, MoreHorizontal, Repeat2 } from "lucide-react";
 import { motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { deleteThread } from "@/lib/actions/thread.actions";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 type PostCardProps = {
   id: string;
@@ -36,11 +47,14 @@ type PostCardProps = {
 const PostCard = ({
   id,
   author,
+  currentUserId,
+  parentId,
   createdAt,
   content,
   comments,
+  isComment,
 }: PostCardProps) => {
-  const router = useRouter();
+  const pathname = usePathname();
   const replyCount = comments?.length ?? 0;
   const stats = {
     likes: 0,
@@ -48,13 +62,10 @@ const PostCard = ({
     reposts: 0,
   };
 
-  const handleThreadOpen = () => {
-    router.push(`/thread/${id}`);
-  };
-
-  const stopClick = (event: SyntheticEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
+  const canDelete = currentUserId === author.id;
+  const handleDelete = async () => {
+    if (!canDelete) return;
+    await deleteThread(id, pathname);
   };
 
   return (
@@ -82,36 +93,56 @@ const PostCard = ({
         <div className="flex-1">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-zinc-900 dark:text-white">
+              <Link
+                href={`/profile/${author.id}`}
+                className="text-sm font-semibold text-zinc-900 transition-colors hover:text-zinc-700 dark:text-white dark:hover:text-zinc-200"
+              >
                 {author.name}
-              </span>
+              </Link>
               {createdAt ? (
                 <span className="text-xs text-zinc-500">
                   {createdAt}
                 </span>
               ) : null}
             </div>
-            <button
-              type="button"
-              onClick={(event) => stopClick(event)}
-              onMouseDown={(event) => stopClick(event)}
-              onTouchStart={(event) => stopClick(event)}
-              className="text-zinc-500 transition-all duration-200 hover:text-zinc-700 dark:hover:text-zinc-300"
-            >
-              <MoreHorizontal className="h-4 w-4" />
-            </button>
+            {canDelete ? (
+              <Dialog>
+                <DialogTrigger asChild>
+                  <button
+                    type="button"
+                    className="text-zinc-500 transition-all duration-200 hover:text-zinc-700 dark:hover:text-zinc-300"
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>
+                      {isComment ? "Delete comment" : "Delete thread"}
+                    </DialogTitle>
+                    <DialogDescription>
+                      {isComment
+                        ? "This will permanently remove your comment."
+                        : "This will permanently remove your thread and its replies."}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter>
+                    <DialogClose asChild>
+                      <Button variant="outline">Cancel</Button>
+                    </DialogClose>
+                    <DialogClose asChild>
+                      <Button variant="destructive" onClick={handleDelete}>
+                        Delete
+                      </Button>
+                    </DialogClose>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            ) : null}
           </div>
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={handleThreadOpen}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                handleThreadOpen();
-              }
-            }}
-            className="mt-2 cursor-pointer rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-zinc-300 dark:focus-visible:ring-zinc-700"
+          <Link
+            href={`/thread/${id}`}
+            className="mt-2 block rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-zinc-300 dark:focus-visible:ring-zinc-700"
           >
             <div className="text-sm text-zinc-700 transition-colors duration-200 hover:text-zinc-900 dark:text-zinc-200 dark:hover:text-white">
               <ReactMarkdown
@@ -153,13 +184,10 @@ const PostCard = ({
                 {content}
               </ReactMarkdown>
             </div>
-          </div>
+          </Link>
           <div className="mt-4 flex items-center gap-6 text-xs text-zinc-500">
             <button
               type="button"
-              onClick={(event) => stopClick(event)}
-              onMouseDown={(event) => stopClick(event)}
-              onTouchStart={(event) => stopClick(event)}
               className="flex items-center gap-2 transition-all duration-200 hover:text-zinc-900 dark:hover:text-white"
             >
               <Heart className="h-4 w-4" />
@@ -167,9 +195,6 @@ const PostCard = ({
             </button>
             <button
               type="button"
-              onClick={(event) => stopClick(event)}
-              onMouseDown={(event) => stopClick(event)}
-              onTouchStart={(event) => stopClick(event)}
               className="flex items-center gap-2 transition-all duration-200 hover:text-zinc-900 dark:hover:text-white"
             >
               <MessageCircle className="h-4 w-4" />
@@ -177,9 +202,6 @@ const PostCard = ({
             </button>
             <button
               type="button"
-              onClick={(event) => stopClick(event)}
-              onMouseDown={(event) => stopClick(event)}
-              onTouchStart={(event) => stopClick(event)}
               className="flex items-center gap-2 transition-all duration-200 hover:text-zinc-900 dark:hover:text-white"
             >
               <Repeat2 className="h-4 w-4" />
