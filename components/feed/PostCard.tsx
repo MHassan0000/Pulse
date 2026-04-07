@@ -7,7 +7,11 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { deleteThread } from "@/lib/actions/thread.actions";
+import {
+  deleteThread,
+  toggleLikeThread,
+  toggleRepostThread,
+} from "@/lib/actions/thread.actions";
 import {
   Dialog,
   DialogClose,
@@ -19,6 +23,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { useOptimistic, useTransition } from "react";
 
 type PostCardProps = {
   id: string;
@@ -41,6 +46,8 @@ type PostCardProps = {
       image: string;
     };
   }[];
+  likes?: string[];
+  reposts?: string[];
   isComment?: boolean;
 };
 
@@ -51,20 +58,59 @@ const PostCard = ({
   createdAt,
   content,
   comments,
+  likes = [],
+  reposts = [],
   isComment,
 }: PostCardProps) => {
   const pathname = usePathname();
+  const [isPending, startTransition] = useTransition();
+
+  const [optimisticLikes, setOptimisticLikes] = useOptimistic(
+    likes,
+    (state, userId: string) =>
+      state.includes(userId)
+        ? state.filter((id) => id !== userId)
+        : [...state, userId]
+  );
+
+  const [optimisticReposts, setOptimisticReposts] = useOptimistic(
+    reposts,
+    (state, userId: string) =>
+      state.includes(userId)
+        ? state.filter((id) => id !== userId)
+        : [...state, userId]
+  );
+
   const replyCount = comments?.length ?? 0;
   const stats = {
-    likes: 0,
+    likes: optimisticLikes.length,
     replies: replyCount,
-    reposts: 0,
+    reposts: optimisticReposts.length,
   };
+
+  const likedByCurrentUser = optimisticLikes.includes(currentUserId);
+  const repostedByCurrentUser = optimisticReposts.includes(currentUserId);
 
   const canDelete = currentUserId === author.id;
   const handleDelete = async () => {
     if (!canDelete) return;
     await deleteThread(id, pathname);
+  };
+
+  const handleLike = () => {
+    if (!currentUserId || isPending) return;
+    startTransition(async () => {
+      setOptimisticLikes(currentUserId);
+      await toggleLikeThread(id, currentUserId, pathname);
+    });
+  };
+
+  const handleRepost = () => {
+    if (!currentUserId || isPending) return;
+    startTransition(async () => {
+      setOptimisticReposts(currentUserId);
+      await toggleRepostThread(id, currentUserId, pathname);
+    });
   };
 
   return (
@@ -187,9 +233,17 @@ const PostCard = ({
           <div className="mt-4 flex items-center gap-6 text-xs text-zinc-500">
             <button
               type="button"
-              className="flex items-center gap-2 transition-all duration-200 hover:text-zinc-900 dark:hover:text-white"
+              onClick={handleLike}
+              disabled={isPending}
+              className={`flex items-center gap-2 transition-all duration-200 ${
+                likedByCurrentUser
+                  ? "text-red-500"
+                  : "hover:text-zinc-900 dark:hover:text-white"
+              }`}
             >
-              <Heart className="h-4 w-4" />
+              <Heart
+                className={`h-4 w-4 ${likedByCurrentUser ? "fill-current" : ""}`}
+              />
               {stats.likes}
             </button>
             <button
@@ -201,7 +255,13 @@ const PostCard = ({
             </button>
             <button
               type="button"
-              className="flex items-center gap-2 transition-all duration-200 hover:text-zinc-900 dark:hover:text-white"
+              onClick={handleRepost}
+              disabled={isPending}
+              className={`flex items-center gap-2 transition-all duration-200 ${
+                repostedByCurrentUser
+                  ? "text-emerald-500"
+                  : "hover:text-zinc-900 dark:hover:text-white"
+              }`}
             >
               <Repeat2 className="h-4 w-4" />
               {stats.reposts}

@@ -19,10 +19,17 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 
 import { ThreadValidation } from "@/lib/validations/thread";
 import { createThread } from "@/lib/actions/thread.actions";
+
+declare global {
+  interface Window {
+    electron?: {
+      openEmojiPanel?: () => void;
+    };
+  }
+}
 
 interface Props {
   userId: string;
@@ -33,8 +40,6 @@ const PostThread = ({ userId }: Props) => {
   const pathname = usePathname();
   const { organization } = useOrganization();
   const [isExpanded, setIsExpanded] = useState(false);
-  const [showEmojiHint, setShowEmojiHint] = useState(false);
-  const emojiHintTimeout = useRef<number | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const { theme } = useTheme();
 
@@ -84,13 +89,11 @@ const PostThread = ({ userId }: Props) => {
     ) as HTMLTextAreaElement | null;
     textarea?.focus();
 
-    setShowEmojiHint(true);
-    if (emojiHintTimeout.current) {
-      window.clearTimeout(emojiHintTimeout.current);
+    // Browsers cannot synthesize OS-level Win + . shortcut for security reasons.
+    // If running in an Electron shell with a native bridge, this hook allows true OS panel opening.
+    if (window.electron?.openEmojiPanel) {
+      window.electron.openEmojiPanel();
     }
-    emojiHintTimeout.current = window.setTimeout(() => {
-      setShowEmojiHint(false);
-    }, 2000);
   };
 
   return (
@@ -153,11 +156,6 @@ const PostThread = ({ userId }: Props) => {
                   <Smile className="h-4 w-4" />
                   Emoji
                 </button>
-                {showEmojiHint ? (
-                  <div className="absolute left-0 top-10 z-20 rounded-full border border-zinc-200 bg-white px-3 py-1 text-[11px] text-zinc-600 shadow-lg dark:border-[#1f1f1f] dark:bg-[#111111] dark:text-zinc-300">
-                    Press Win + . to open emojis
-                  </div>
-                ) : null}
               </div>
               <button
                 type="button"

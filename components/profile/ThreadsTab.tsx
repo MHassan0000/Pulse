@@ -28,6 +28,8 @@ interface Result {
         image: string;
       };
     }[];
+    likes?: string[];
+    reposts?: string[];
   }[];
 }
 
@@ -47,6 +49,8 @@ type RawThread = {
   } | null;
   createdAt?: string | Date;
   children?: { author?: { image?: string } }[];
+  likes?: unknown[];
+  reposts?: unknown[];
 };
 
 type RawResult = {
@@ -109,6 +113,12 @@ async function ThreadsTab({
           image: child.author?.image ?? "",
         },
       })),
+      likes: Array.isArray(thread.likes)
+        ? thread.likes.map((likedBy) => String(likedBy))
+        : [],
+      reposts: Array.isArray(thread.reposts)
+        ? thread.reposts.map((repostedBy) => String(repostedBy))
+        : [],
     })),
   };
 
@@ -153,6 +163,8 @@ async function ThreadsTab({
             }
             createdAt={thread.createdAt}
             comments={thread.children}
+            likes={thread.likes}
+            reposts={thread.reposts}
           />
         </div>
       ))}

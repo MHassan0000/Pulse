@@ -270,3 +270,49 @@ export async function addCommentToThread(
     throw new Error("Unable to add comment");
   }
 }
+
+export async function toggleLikeThread(
+  threadId: string,
+  userId: string,
+  path: string
+) {
+  await connectToDB();
+
+  const thread = await Thread.findById(threadId);
+  if (!thread) throw new Error("Thread not found");
+
+  const likes: string[] = Array.isArray(thread.likes)
+    ? thread.likes.map((id: unknown) => String(id))
+    : [];
+  const alreadyLiked = likes.includes(userId);
+
+  await Thread.findByIdAndUpdate(threadId, {
+    [alreadyLiked ? "$pull" : "$addToSet"]: { likes: userId },
+  });
+
+  revalidatePath(path);
+  return { liked: !alreadyLiked };
+}
+
+export async function toggleRepostThread(
+  threadId: string,
+  userId: string,
+  path: string
+) {
+  await connectToDB();
+
+  const thread = await Thread.findById(threadId);
+  if (!thread) throw new Error("Thread not found");
+
+  const reposts: string[] = Array.isArray(thread.reposts)
+    ? thread.reposts.map((id: unknown) => String(id))
+    : [];
+  const alreadyReposted = reposts.includes(userId);
+
+  await Thread.findByIdAndUpdate(threadId, {
+    [alreadyReposted ? "$pull" : "$addToSet"]: { reposts: userId },
+  });
+
+  revalidatePath(path);
+  return { reposted: !alreadyReposted };
+}

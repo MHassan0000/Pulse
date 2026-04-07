@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
 import { currentUser } from "@clerk/nextjs/server";
+import { Suspense } from "react";
 
-import UserCard from "@/components/search/UserCard";
 import Searchbar from "@/components/search/Searchbar";
-import Pagination from "@/components/layout/Pagination";
+import SearchResults from "./SearchResults";
 
-import { fetchUser, fetchUsers } from "@/lib/actions/user.actions";
+import { fetchUser } from "@/lib/actions/user.actions";
 
 async function Page({
   searchParams,
@@ -21,13 +21,7 @@ async function Page({
   if (!userInfo?.onboarded) redirect("/onboarding");
 
   const pageNumber = resolvedSearchParams?.page ? +resolvedSearchParams.page : 1;
-
-  const result = await fetchUsers({
-    userId: user.id,
-    searchString: resolvedSearchParams.q,
-    pageNumber,
-    pageSize: 25,
-  });
+  const normalizedPageNumber = Number.isFinite(pageNumber) && pageNumber > 0 ? pageNumber : 1;
 
   return (
     <section className="page-scroll h-full overflow-y-auto pb-24">
@@ -45,26 +39,25 @@ async function Page({
 
           <Searchbar routeType="search" />
 
-          <div className="mt-8 flex flex-col gap-4">
-            {result.users.length === 0 ? (
-              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-6 py-12 text-center text-sm text-zinc-500 dark:border-[#1f1f1f] dark:bg-black dark:text-zinc-400">
-                No result found.
+          <Suspense
+            key={`${resolvedSearchParams.q ?? ""}-${normalizedPageNumber}`}
+            fallback={
+              <div className="mt-8 flex flex-col gap-4">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <div
+                    key={index}
+                    className="h-20 animate-pulse rounded-2xl border border-zinc-200 bg-zinc-50 dark:border-[#1f1f1f] dark:bg-black"
+                  />
+                ))}
               </div>
-            ) : (
-              result.users.map((person) => (
-                <UserCard
-                  key={person.id}
-                  id={person.id}
-                  name={person.name}
-                  username={person.username}
-                  imgUrl={person.image}
-                  personType="User"
-                />
-              ))
-            )}
-          </div>
-
-          <Pagination path="search" pageNumber={pageNumber} isNext={result.isNext} />
+            }
+          >
+            <SearchResults
+              userId={user.id}
+              query={resolvedSearchParams.q}
+              pageNumber={normalizedPageNumber}
+            />
+          </Suspense>
         </div>
       </div>
     </section>

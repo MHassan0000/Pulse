@@ -73,6 +73,12 @@ async function Page({
           },
         }))
       : [],
+    likes: Array.isArray(thread.likes)
+      ? thread.likes.map((likedBy: unknown) => String(likedBy))
+      : [],
+    reposts: Array.isArray(thread.reposts)
+      ? thread.reposts.map((repostedBy: unknown) => String(repostedBy))
+      : [],
   };
 
   return (
@@ -80,13 +86,15 @@ async function Page({
       <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-[0_20px_60px_rgba(0,0,0,0.08)] dark:border-[#1f1f1f] dark:bg-[#0f0f0f]">
         <PostCard
           id={threadData.id}
-          currentUserId={userInfo.id}
+          currentUserId={userInfo.id ?? ""}
           parentId={threadData.parentId}
           content={threadData.content}
           author={threadData.author}
           community={threadData.community}
           createdAt={threadData.createdAt}
           comments={threadData.comments}
+          likes={threadData.likes}
+          reposts={threadData.reposts}
         />
       </div>
 
@@ -116,7 +124,7 @@ async function Page({
               </div>
               <PostCard
                 id={childItem._id ? String(childItem._id) : ""}
-                currentUserId={userInfo.id}
+                currentUserId={userInfo.id ?? ""}
                 parentId={childItem.parentId ?? null}
                 content={childItem.text ?? ""}
                 author={{
@@ -148,6 +156,16 @@ async function Page({
                           image: child?.author?.image ?? "",
                         },
                       }))
+                    : []
+                }
+                likes={
+                  Array.isArray(childItem.likes)
+                    ? childItem.likes.map((likedBy: unknown) => String(likedBy))
+                    : []
+                }
+                reposts={
+                  Array.isArray(childItem.reposts)
+                    ? childItem.reposts.map((repostedBy: unknown) => String(repostedBy))
                     : []
                 }
                 isComment

@@ -56,6 +56,12 @@ const Feed = async ({
             },
           }))
         : [],
+      likes: Array.isArray(post.likes)
+        ? post.likes.map((likedBy: unknown) => String(likedBy))
+        : [],
+      reposts: Array.isArray(post.reposts)
+        ? post.reposts.map((repostedBy: unknown) => String(repostedBy))
+        : [],
     };
   });
 
@@ -72,6 +78,8 @@ const Feed = async ({
           community={post.community}
           createdAt={post.createdAt}
           comments={post.comments}
+          likes={post.likes}
+          reposts={post.reposts}
         />
       ))}
       <div className="flex items-center justify-between px-5 py-6 text-xs text-zinc-500">

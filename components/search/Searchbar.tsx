@@ -1,6 +1,13 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import {
+  FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+} from "react";
 import { Search } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
@@ -12,12 +19,16 @@ const Searchbar = ({ routeType = "search" }: SearchbarProps) => {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
   const [query, setQuery] = useState(searchParams.get("q") ?? "");
+  const initialQuery = useMemo(() => searchParams.get("q") ?? "", [searchParams]);
 
-  const onSubmit = (event: FormEvent) => {
-    event.preventDefault();
+  useEffect(() => {
+    setQuery(initialQuery);
+  }, [initialQuery]);
 
-    const trimmed = query.trim();
+  const navigateWithQuery = useCallback((value: string) => {
+    const trimmed = value.trim();
     const params = new URLSearchParams(searchParams.toString());
 
     if (trimmed) {
@@ -30,7 +41,23 @@ const Searchbar = ({ routeType = "search" }: SearchbarProps) => {
 
     const targetPath = routeType === "search" ? "/search" : pathname;
     const queryString = params.toString();
-    router.push(queryString ? `${targetPath}?${queryString}` : targetPath);
+    startTransition(() => {
+      router.push(queryString ? `${targetPath}?${queryString}` : targetPath);
+    });
+  }, [pathname, routeType, router, searchParams]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      if (query === initialQuery) return;
+      navigateWithQuery(query);
+    }, 350);
+
+    return () => window.clearTimeout(timeout);
+  }, [query, initialQuery, navigateWithQuery]);
+
+  const onSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    navigateWithQuery(query);
   };
 
   return (
@@ -46,7 +73,7 @@ const Searchbar = ({ routeType = "search" }: SearchbarProps) => {
         type="submit"
         className="absolute right-2 top-1/2 h-8 -translate-y-1/2 rounded-full border border-zinc-200 bg-zinc-50 px-4 text-xs font-semibold text-zinc-700 transition-all duration-200 hover:bg-zinc-100 dark:border-[#2a2a2a] dark:bg-black dark:text-zinc-200 dark:hover:bg-zinc-900"
       >
-        Search
+        {isPending ? "Searching..." : "Search"}
       </button>
     </form>
   );
