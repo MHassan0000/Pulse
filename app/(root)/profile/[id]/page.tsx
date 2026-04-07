@@ -65,14 +65,14 @@ async function Page({ params }: { params: Promise<{ id: string }> }) {
               <TabsContent key={`content-${tab.label}`} value={tab.value} className="w-full">
                 {tab.value === "threads" ? (
                   <ThreadsTab
-                    currentUserId={userInfo.id}
+                    currentUserId={user.id}
                     accountId={userInfo.id}
                     accountType="User"
                     mode="threads"
                   />
                 ) : tab.value === "replies" ? (
                   <ThreadsTab
-                    currentUserId={userInfo.id}
+                    currentUserId={user.id}
                     accountId={userInfo.id}
                     accountType="User"
                     mode="replies"

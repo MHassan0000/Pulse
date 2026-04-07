@@ -60,14 +60,18 @@ async function Page({ params }: { params: Promise<{ id: string }> }) {
           imgUrl={communityDetails.image}
           bio={communityDetails.bio}
           type="Community"
-        />
-
-        <CommunityActions
-          communityId={communityDetails.id}
-          currentUserId={currentUserAppId}
-          ownerUserId={ownerUserId}
-          isMember={isMember}
-          isAuthenticated={!!user.id}
+          actionSlot={
+            <CommunityActions
+              communityId={communityDetails.id}
+              currentUserId={currentUserAppId}
+              ownerUserId={ownerUserId}
+              isMember={isMember}
+              isAuthenticated={!!user.id}
+              communityName={communityDetails.name}
+              communityUsername={communityDetails.username}
+              communityImage={communityDetails.image}
+            />
+          }
         />
 
         <div className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-[0_20px_60px_rgba(0,0,0,0.06)] dark:border-[#1f1f1f] dark:bg-[#0f0f0f] md:p-6">
@@ -94,7 +98,7 @@ async function Page({ params }: { params: Promise<{ id: string }> }) {
 
             <TabsContent value="threads" className="w-full">
               <ThreadsTab
-                currentUserId={user.id}
+                currentUserId={currentUserAppId}
                 accountId={communityObjectId}
                 accountType="Community"
                 mode="threads"
@@ -104,7 +108,7 @@ async function Page({ params }: { params: Promise<{ id: string }> }) {
             <TabsContent value="members" className="w-full">
               <section className="mt-6 flex flex-col gap-4">
                 {communityDetails.members?.length ? (
-                  (communityDetails.members as CommunityMember[]).map((member) => (
+                  communityDetails.members.map((member) => (
                     <MemberRow
                       key={member.id}
                       member={member}

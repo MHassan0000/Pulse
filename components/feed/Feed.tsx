@@ -8,6 +8,29 @@ type FeedProps = {
   currentUserId?: string | null;
 };
 
+type FeedPost = {
+  _id?: unknown;
+  id?: string;
+  parentId?: string | null;
+  text?: string;
+  createdAt?: string | Date;
+  author?: {
+    name?: string;
+    image?: string;
+    id?: string;
+    _id?: { toString?: () => string };
+  };
+  community?: {
+    id?: string;
+    name?: string;
+    image?: string;
+    _id?: { toString?: () => string };
+  } | null;
+  children?: Array<{ author?: { image?: string } }>;
+  likes?: unknown[];
+  reposts?: unknown[];
+};
+
 const Feed = async ({
   pageNumber = 1,
   pageSize = 10,
@@ -23,7 +46,7 @@ const Feed = async ({
     );
   }
 
-  const sanitizedPosts = posts.map((post: any) => {
+  const sanitizedPosts = posts.map((post: FeedPost) => {
     const author = post.author ?? {};
     const community = post.community ?? null;
     const createdAt = post.createdAt
@@ -50,7 +73,7 @@ const Feed = async ({
         : null,
       createdAt: createdAt ?? "",
       comments: Array.isArray(post.children)
-        ? post.children.map((child: any) => ({
+        ? post.children.map((child) => ({
             author: {
               image: child?.author?.image ?? "",
             },

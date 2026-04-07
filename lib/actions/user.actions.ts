@@ -1,6 +1,6 @@
 "use server";
 
-import mongoose, { SortOrder, InferSchemaType } from "mongoose";
+import mongoose, { SortOrder } from "mongoose";
 import { revalidatePath } from "next/cache";
 
 import Community from "../models/community.model";
@@ -8,6 +8,9 @@ import Thread from "../models/thread.model";
 import User from "../models/user.model";
 
 import { connectToDB } from "../mongoose";
+
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : "Unknown error";
 
 
 export async function fetchUser(userId: string) {
@@ -18,8 +21,8 @@ export async function fetchUser(userId: string) {
       path: "communities",
       model: Community,
     });
-  } catch (error: any) {
-    throw new Error(`Failed to fetch user: ${error.message}`);
+  } catch (error: unknown) {
+    throw new Error(`Failed to fetch user: ${getErrorMessage(error)}`);
   }
 }
 
@@ -58,8 +61,8 @@ export async function updateUser({
     if (path === "/profile/edit") {
       revalidatePath(path);
     }
-  } catch (error: any) {
-    throw new Error(`Failed to create/update user: ${error.message}`);
+  } catch (error: unknown) {
+    throw new Error(`Failed to create/update user: ${getErrorMessage(error)}`);
   }
 }
 
@@ -119,8 +122,6 @@ export async function fetchUsers({
     const regex = new RegExp(searchString, "i");
 
     // Create an initial query object to filter users.
-    type UserDocument = InferSchemaType<typeof User.schema>;
-
     const query: mongoose.AnyObject = {
       id: { $ne: userId }, // Exclude the current user from the results.
     };

@@ -2,12 +2,20 @@
 
 import { revalidatePath } from "next/cache";
 
-import mongoose from "mongoose";
 import { connectToDB } from "../mongoose";
 
 import User from "../models/user.model";
 import Thread from "../models/thread.model";
 import Community from "../models/community.model";
+
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : "Unknown error";
+
+type DescendantThread = {
+  _id: unknown;
+  author?: { _id?: unknown } | null;
+  community?: { _id?: unknown } | null;
+};
 
 export async function fetchPosts(pageNumber = 1, pageSize = 20) {
   await connectToDB();
@@ -53,10 +61,10 @@ export async function fetchPosts(pageNumber = 1, pageSize = 20) {
 }
 
 interface Params {
-  text: string,
-  author: string,
-  communityId: string | null,
-  path: string,
+  text: string;
+  author: string;
+  communityId: string | null;
+  path: string;
 }
 
 export async function createThread({
@@ -93,33 +101,61 @@ export async function createThread({
 
     revalidatePath(path);
     return createdThread._id?.toString();
-  } catch (error: any) {
-    throw new Error(`Failed to create thread: ${error.message}`);
+  } catch (error: unknown) {
+    throw new Error(`Failed to create thread: ${getErrorMessage(error)}`);
   }
 }
 
-async function fetchAllChildThreads(threadId: string): Promise<any[]> {
+async function fetchAllChildThreads(threadId: string): Promise<DescendantThread[]> {
   await connectToDB();
-  const childThreads = await Thread.find({ parentId: threadId });
+  const childThreads = await Thread.find({ parentId: threadId }).lean();
 
-  const descendantThreads = [];
+  const descendantThreads: DescendantThread[] = [];
   for (const childThread of childThreads) {
-    const descendants = await fetchAllChildThreads(childThread._id);
+    const childThreadId =
+      typeof childThread._id === "string"
+        ? childThread._id
+        : childThread._id?.toString?.() ?? "";
+    const descendants = childThreadId
+      ? await fetchAllChildThreads(childThreadId)
+      : [];
     descendantThreads.push(childThread, ...descendants);
   }
 
   return descendantThreads;
 }
 
-export async function deleteThread(id: string, path: string): Promise<void> {
+export async function deleteThread(
+  id: string,
+  path: string,
+  actorUserId?: string
+): Promise<void> {
   try {
     await connectToDB();
 
     // Find the thread to be deleted (the main thread)
-    const mainThread = await Thread.findById(id).populate("author community");
+    const mainThread = await Thread.findById(id).populate([
+      {
+        path: "author",
+        model: User,
+        select: "id _id",
+      },
+      {
+        path: "community",
+        model: Community,
+        select: "_id",
+      },
+    ]);
 
     if (!mainThread) {
       throw new Error("Thread not found");
+    }
+
+    if (actorUserId) {
+      const ownerId = (mainThread.author as { id?: string } | null)?.id;
+      if (!ownerId || ownerId !== actorUserId) {
+        throw new Error("Only the thread author can delete this thread");
+      }
     }
 
     // Fetch all child threads and their descendants recursively
@@ -162,8 +198,8 @@ export async function deleteThread(id: string, path: string): Promise<void> {
     );
 
     revalidatePath(path);
-  } catch (error: any) {
-    throw new Error(`Failed to delete thread: ${error.message}`);
+  } catch (error: unknown) {
+    throw new Error(`Failed to delete thread: ${getErrorMessage(error)}`);
   }
 }
 

@@ -19,6 +19,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import CommunitySettingsDialog from "@/components/community/CommunitySettingsDialog";
 
 type CommunityActionsProps = {
   communityId: string;
@@ -26,6 +27,9 @@ type CommunityActionsProps = {
   ownerUserId: string;
   isMember: boolean;
   isAuthenticated: boolean;
+  communityName: string;
+  communityUsername: string;
+  communityImage: string;
 };
 
 const CommunityActions = ({
@@ -34,6 +38,9 @@ const CommunityActions = ({
   ownerUserId,
   isMember,
   isAuthenticated,
+  communityName,
+  communityUsername,
+  communityImage,
 }: CommunityActionsProps) => {
   const pathname = usePathname();
   const router = useRouter();
@@ -79,35 +86,45 @@ const CommunityActions = ({
       </Button>
 
       {isAdmin ? (
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button
-              type="button"
-              variant="destructive"
-              className="rounded-full px-4 text-xs font-semibold"
-            >
-              Delete community
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Delete community</DialogTitle>
-              <DialogDescription>
-                This will permanently remove the community and all its threads.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button variant="outline">Cancel</Button>
-              </DialogClose>
-              <DialogClose asChild>
-                <Button variant="destructive" onClick={handleDeleteCommunity}>
-                  Delete
-                </Button>
-              </DialogClose>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <>
+          <CommunitySettingsDialog
+            communityId={communityId}
+            adminUserId={currentUserId}
+            defaultName={communityName}
+            defaultUsername={communityUsername}
+            defaultImage={communityImage}
+          />
+
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button
+                type="button"
+                variant="destructive"
+                className="rounded-full px-4 text-xs font-semibold"
+              >
+                Delete community
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Delete community</DialogTitle>
+                <DialogDescription>
+                  This will permanently remove the community and all its threads.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button variant="outline">Cancel</Button>
+                </DialogClose>
+                <DialogClose asChild>
+                  <Button variant="destructive" onClick={handleDeleteCommunity}>
+                    Delete
+                  </Button>
+                </DialogClose>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </>
       ) : null}
     </div>
   );

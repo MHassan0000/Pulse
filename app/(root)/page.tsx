@@ -32,7 +32,7 @@ export default async function Home({ searchParams }: HomeProps) {
           <Feed
             pageNumber={safePageNumber}
             pageSize={10}
-            currentUserId={userInfo?.id ?? ""}
+            currentUserId={userId ?? ""}
           />
         </div>
       </div>

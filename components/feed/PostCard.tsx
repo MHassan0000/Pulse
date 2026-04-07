@@ -99,7 +99,7 @@ const PostCard = ({
   const canDelete = currentUserId === author.id;
   const handleDelete = async () => {
     if (!canDelete) return;
-    await deleteThread(id, pathname);
+    await deleteThread(id, pathname, currentUserId);
   };
 
   const handleLike = () => {

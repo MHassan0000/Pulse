@@ -9,6 +9,7 @@ type ProfileHeaderProps = {
   imgUrl: string;
   bio: string;
   type?: "User" | "Community";
+  actionSlot?: React.ReactNode;
 };
 
 const ProfileHeader = ({
@@ -19,6 +20,7 @@ const ProfileHeader = ({
   imgUrl,
   bio,
   type = "User",
+  actionSlot,
 }: ProfileHeaderProps) => {
   const isOwnProfile = type === "User" && accountId === authUserId;
 
@@ -45,7 +47,9 @@ const ProfileHeader = ({
           </div>
         </div>
 
-        {isOwnProfile ? (
+        {actionSlot ? (
+          actionSlot
+        ) : isOwnProfile ? (
           <Link
             href="/profile/edit"
             className="inline-flex h-9 items-center justify-center rounded-full border border-zinc-200 px-4 text-xs font-semibold text-zinc-700 transition-all duration-200 hover:border-zinc-300 hover:bg-zinc-100 dark:border-[#2a2a2a] dark:text-zinc-200 dark:hover:border-zinc-700 dark:hover:bg-zinc-900"

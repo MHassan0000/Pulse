@@ -9,6 +9,28 @@ import { fetchThreadById } from "@/lib/actions/thread.actions";
 
 export const revalidate = 0;
 
+type ThreadChild = {
+  _id?: unknown;
+  parentId?: string | null;
+  text?: string;
+  author?: {
+    name?: string;
+    image?: string;
+    id?: string;
+    _id?: { toString?: () => string };
+  };
+  community?: {
+    id?: string;
+    name?: string;
+    image?: string;
+    _id?: { toString?: () => string };
+  } | null;
+  createdAt?: string | Date;
+  children?: Array<{ author?: { image?: string } }>;
+  likes?: unknown[];
+  reposts?: unknown[];
+};
+
 async function Page({
   params,
 }: {
@@ -67,7 +89,7 @@ async function Page({
       ? new Date(thread.createdAt).toISOString()
       : "",
     comments: Array.isArray(thread.children)
-      ? thread.children.map((child: any) => ({
+      ? thread.children.map((child: ThreadChild) => ({
           author: {
             image: child?.author?.image ?? "",
           },
@@ -86,7 +108,7 @@ async function Page({
       <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-[0_20px_60px_rgba(0,0,0,0.08)] dark:border-[#1f1f1f] dark:bg-[#0f0f0f]">
         <PostCard
           id={threadData.id}
-          currentUserId={userInfo.id ?? ""}
+          currentUserId={user.id}
           parentId={threadData.parentId}
           content={threadData.content}
           author={threadData.author}
@@ -107,13 +129,13 @@ async function Page({
       </div>
 
       <div className="flex flex-col gap-4">
-        {thread.children.map((childItem: any) => {
+        {(thread.children as ThreadChild[]).map((childItem) => {
           const childAuthor = childItem.author ?? {};
           const childCommunity = childItem.community ?? null;
 
           return (
             <div
-              key={childItem._id}
+              key={childItem._id ? String(childItem._id) : `${id}-child`}
               className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-[0_20px_60px_rgba(0,0,0,0.04)] dark:border-[#1f1f1f] dark:bg-[#0f0f0f]"
             >
               <div className="mb-4 flex items-center gap-3">
@@ -124,7 +146,7 @@ async function Page({
               </div>
               <PostCard
                 id={childItem._id ? String(childItem._id) : ""}
-                currentUserId={userInfo.id ?? ""}
+                currentUserId={user.id}
                 parentId={childItem.parentId ?? null}
                 content={childItem.text ?? ""}
                 author={{
@@ -151,7 +173,7 @@ async function Page({
                 }
                 comments={
                   Array.isArray(childItem.children)
-                    ? childItem.children.map((child: any) => ({
+                    ? childItem.children.map((child) => ({
                         author: {
                           image: child?.author?.image ?? "",
                         },
