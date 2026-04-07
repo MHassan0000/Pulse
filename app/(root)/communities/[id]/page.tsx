@@ -2,9 +2,10 @@ import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 
 import { communityTabs } from "@/constants";
-import UserCard from "@/components/search/UserCard";
 import ThreadsTab from "@/components/profile/ThreadsTab";
 import ProfileHeader from "@/components/profile/ProfileHeader";
+import CommunityActions from "@/components/community/CommunityActions";
+import MemberRow from "@/components/community/MemberRow";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { fetchCommunityDetails } from "@/lib/actions/community.actions";
@@ -16,14 +17,37 @@ type CommunityMember = {
   image: string;
 };
 
+type CommunityDetailsShape = {
+  _id?: string | { toString?: () => string };
+  id: string;
+  name: string;
+  username: string;
+  image: string;
+  bio: string;
+  createdBy?: { id?: string };
+  members?: CommunityMember[];
+  threads?: unknown[];
+};
+
 async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
   const user = await currentUser();
   if (!user) redirect("/sign-in");
 
-  const communityDetails = await fetchCommunityDetails(id);
+  const communityDetails = (await fetchCommunityDetails(id)) as CommunityDetailsShape | null;
   if (!communityDetails) redirect("/communities");
+
+  const currentUserAppId = user.id;
+  const ownerUserId = communityDetails.createdBy?.id ?? "";
+  const memberIds = (communityDetails.members ?? []).map((member) => member.id);
+  const isMember = memberIds.includes(currentUserAppId);
+  const communityObjectId =
+    typeof communityDetails._id === "string"
+      ? communityDetails._id
+      : typeof communityDetails._id?.toString === "function"
+        ? communityDetails._id.toString()
+      : "";
 
   return (
     <section className="page-scroll h-full overflow-y-auto pb-24">
@@ -36,6 +60,14 @@ async function Page({ params }: { params: Promise<{ id: string }> }) {
           imgUrl={communityDetails.image}
           bio={communityDetails.bio}
           type="Community"
+        />
+
+        <CommunityActions
+          communityId={communityDetails.id}
+          currentUserId={currentUserAppId}
+          ownerUserId={ownerUserId}
+          isMember={isMember}
+          isAuthenticated={!!user.id}
         />
 
         <div className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-[0_20px_60px_rgba(0,0,0,0.06)] dark:border-[#1f1f1f] dark:bg-[#0f0f0f] md:p-6">
@@ -63,7 +95,7 @@ async function Page({ params }: { params: Promise<{ id: string }> }) {
             <TabsContent value="threads" className="w-full">
               <ThreadsTab
                 currentUserId={user.id}
-                accountId={communityDetails._id?.toString() ?? ""}
+                accountId={communityObjectId}
                 accountType="Community"
                 mode="threads"
               />
@@ -73,13 +105,12 @@ async function Page({ params }: { params: Promise<{ id: string }> }) {
               <section className="mt-6 flex flex-col gap-4">
                 {communityDetails.members?.length ? (
                   (communityDetails.members as CommunityMember[]).map((member) => (
-                    <UserCard
+                    <MemberRow
                       key={member.id}
-                      id={member.id}
-                      name={member.name}
-                      username={member.username}
-                      imgUrl={member.image}
-                      personType="User"
+                      member={member}
+                      communityId={communityDetails.id}
+                      currentUserId={currentUserAppId}
+                      ownerUserId={ownerUserId}
                     />
                   ))
                 ) : (

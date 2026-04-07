@@ -1,6 +1,7 @@
 "use server";
 
 import mongoose, { SortOrder } from "mongoose";
+import { revalidatePath } from "next/cache";
 
 import Community from "../models/community.model";
 import Thread from "../models/thread.model";
@@ -328,4 +329,108 @@ export async function deleteCommunity(communityId: string) {
     console.error("Error deleting community: ", error);
     throw error;
   }
+}
+
+export async function joinCommunity(
+  communityId: string,
+  memberId: string,
+  path: string
+) {
+  await addMemberToCommunity(communityId, memberId);
+  revalidatePath(path);
+  revalidatePath(`/communities/${communityId}`);
+  return { success: true };
+}
+
+export async function leaveCommunity(
+  communityId: string,
+  memberId: string,
+  path: string
+) {
+  await removeUserFromCommunity(memberId, communityId);
+  revalidatePath(path);
+  revalidatePath(`/communities/${communityId}`);
+  return { success: true };
+}
+
+export async function updateCommunityInfoAsAdmin(
+  communityId: string,
+  name: string,
+  username: string,
+  image: string,
+  adminUserId: string,
+  path: string
+) {
+  await connectToDB();
+
+  const community = await Community.findOne({ id: communityId }).populate({
+    path: "createdBy",
+    model: User,
+    select: "id",
+  });
+
+  if (!community) throw new Error("Community not found");
+
+  const ownerId = (community.createdBy as { id?: string } | null)?.id;
+  if (!ownerId || ownerId !== adminUserId) {
+    throw new Error("Only community admin can update this community");
+  }
+
+  await updateCommunityInfo(communityId, name, username, image);
+  revalidatePath(path);
+  revalidatePath(`/communities/${communityId}`);
+  return { success: true };
+}
+
+export async function removeMemberFromCommunityAsAdmin(
+  communityId: string,
+  targetUserId: string,
+  adminUserId: string,
+  path: string
+) {
+  await connectToDB();
+
+  const community = await Community.findOne({ id: communityId }).populate({
+    path: "createdBy",
+    model: User,
+    select: "id",
+  });
+
+  if (!community) throw new Error("Community not found");
+
+  const ownerId = (community.createdBy as { id?: string } | null)?.id;
+  if (!ownerId || ownerId !== adminUserId) {
+    throw new Error("Only community admin can remove members");
+  }
+
+  await removeUserFromCommunity(targetUserId, communityId);
+  revalidatePath(path);
+  revalidatePath(`/communities/${communityId}`);
+  return { success: true };
+}
+
+export async function deleteCommunityAsAdmin(
+  communityId: string,
+  adminUserId: string,
+  path: string
+) {
+  await connectToDB();
+
+  const community = await Community.findOne({ id: communityId }).populate({
+    path: "createdBy",
+    model: User,
+    select: "id",
+  });
+
+  if (!community) throw new Error("Community not found");
+
+  const ownerId = (community.createdBy as { id?: string } | null)?.id;
+  if (!ownerId || ownerId !== adminUserId) {
+    throw new Error("Only community admin can delete this community");
+  }
+
+  await deleteCommunity(communityId);
+  revalidatePath(path);
+  revalidatePath("/communities");
+  return { success: true };
 }
