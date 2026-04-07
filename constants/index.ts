@@ -57,3 +57,17 @@ export const profileTabs = [
   },
 ];
 
+export const communityTabs = [
+  {
+    label: "Threads",
+    value: "threads",
+  },
+  {
+    label: "Members",
+    value: "members",
+  },
+  {
+    label: "Requests",
+    value: "requests",
+  },
+];

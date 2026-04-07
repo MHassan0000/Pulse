@@ -8,6 +8,7 @@ type ProfileHeaderProps = {
   username: string;
   imgUrl: string;
   bio: string;
+  type?: "User" | "Community";
 };
 
 const ProfileHeader = ({
@@ -17,8 +18,9 @@ const ProfileHeader = ({
   username,
   imgUrl,
   bio,
+  type = "User",
 }: ProfileHeaderProps) => {
-  const isOwnProfile = accountId === authUserId;
+  const isOwnProfile = type === "User" && accountId === authUserId;
 
   return (
     <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-[0_20px_60px_rgba(0,0,0,0.06)] dark:border-[#1f1f1f] dark:bg-[#0f0f0f] md:p-8">
@@ -43,14 +45,21 @@ const ProfileHeader = ({
           </div>
         </div>
 
-        {isOwnProfile && (
+        {isOwnProfile ? (
           <Link
             href="/profile/edit"
             className="inline-flex h-9 items-center justify-center rounded-full border border-zinc-200 px-4 text-xs font-semibold text-zinc-700 transition-all duration-200 hover:border-zinc-300 hover:bg-zinc-100 dark:border-[#2a2a2a] dark:text-zinc-200 dark:hover:border-zinc-700 dark:hover:bg-zinc-900"
           >
             Edit profile
           </Link>
-        )}
+        ) : type === "Community" ? (
+          <button
+            type="button"
+            className="inline-flex h-9 items-center justify-center rounded-full border border-zinc-900 bg-zinc-900 px-4 text-xs font-semibold text-white transition-all duration-200 hover:bg-black dark:border-white dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+          >
+            Join community
+          </button>
+        ) : null}
       </div>
 
       <p className="mt-5 max-w-2xl text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
@@ -59,7 +68,7 @@ const ProfileHeader = ({
 
       <div className="mt-6 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
         <span className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 dark:border-[#1f1f1f] dark:bg-black">
-          Public profile
+          {type === "Community" ? "Community" : "Public profile"}
         </span>
         <span className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 dark:border-[#1f1f1f] dark:bg-black">
           Joined Pulse

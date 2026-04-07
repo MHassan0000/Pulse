@@ -1,5 +1,10 @@
 import Image from "next/image";
-import { SignInButton, Show, UserButton } from "@clerk/nextjs";
+import {
+  OrganizationSwitcher,
+  SignInButton,
+  Show,
+  UserButton,
+} from "@clerk/nextjs";
 
 const Topbar = () => {
   return (
@@ -23,6 +28,18 @@ const Topbar = () => {
             <SignInButton><button className="rounded-full border border-zinc-200 bg-white px-4 py-2 text-xs text-zinc-600 transition-all duration-200 cursor-pointer hover:bg-zinc-100 active:scale-[0.98] dark:border-[#1f1f1f] dark:bg-[#0a0a0a] dark:text-zinc-300 dark:hover:bg-zinc-900">Log in</button></SignInButton>
           </Show>
           <Show when="signed-in">
+            <div className="hidden sm:block">
+              <OrganizationSwitcher
+                afterCreateOrganizationUrl="/communities"
+                afterSelectOrganizationUrl="/communities"
+                appearance={{
+                  elements: {
+                    organizationSwitcherTrigger:
+                      "h-9 rounded-full border border-zinc-200 bg-white px-3 text-xs dark:border-[#1f1f1f] dark:bg-[#0a0a0a]",
+                  },
+                }}
+              />
+            </div>
             <UserButton />
           </Show>
         </div>

@@ -53,14 +53,40 @@ export async function fetchCommunityDetails(id: string) {
   try {
     await connectToDB();
 
-    const communityDetails = await Community.findOne({ id }).populate([
-      "createdBy",
-      {
-        path: "members",
-        model: User,
-        select: "name username image _id id",
-      },
-    ]);
+    const communityDetails = await Community.findOne({ id })
+      .populate([
+        {
+          path: "createdBy",
+          model: User,
+          select: "id name username image",
+        },
+        {
+          path: "members",
+          model: User,
+          select: "name username image _id id",
+        },
+      ])
+      .populate({
+        path: "threads",
+        model: Thread,
+        options: { sort: { createdAt: -1 } },
+        populate: [
+          {
+            path: "author",
+            model: User,
+            select: "name image id",
+          },
+          {
+            path: "children",
+            model: Thread,
+            populate: {
+              path: "author",
+              model: User,
+              select: "image _id",
+            },
+          },
+        ],
+      });
 
     return communityDetails;
   } catch (error) {
@@ -77,6 +103,7 @@ export async function fetchCommunityPosts(id: string) {
     const communityPosts = await Community.findById(id).populate({
       path: "threads",
       model: Thread,
+      options: { sort: { createdAt: -1 } },
       populate: [
         {
           path: "author",

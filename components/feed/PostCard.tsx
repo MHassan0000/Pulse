@@ -55,6 +55,7 @@ const PostCard = ({
   id,
   author,
   currentUserId,
+  community,
   createdAt,
   content,
   comments,
@@ -87,6 +88,10 @@ const PostCard = ({
     replies: replyCount,
     reposts: optimisticReposts.length,
   };
+
+  const formattedDate = createdAt
+    ? new Date(createdAt).toISOString().slice(0, 16).replace("T", " ")
+    : "";
 
   const likedByCurrentUser = optimisticLikes.includes(currentUserId);
   const repostedByCurrentUser = optimisticReposts.includes(currentUserId);
@@ -146,7 +151,7 @@ const PostCard = ({
               </Link>
               {createdAt ? (
                 <span className="text-xs text-zinc-500">
-                  {createdAt}
+                  {formattedDate}
                 </span>
               ) : null}
             </div>
@@ -267,6 +272,26 @@ const PostCard = ({
               {stats.reposts}
             </button>
           </div>
+
+          {community ? (
+            <Link
+              href={`/communities/${community.id}`}
+              className="mt-3 inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-[11px] font-medium text-zinc-600 transition-all duration-200 hover:bg-zinc-100 dark:border-[#1f1f1f] dark:bg-black dark:text-zinc-300 dark:hover:bg-zinc-900"
+            >
+              <span className="h-4 w-4 overflow-hidden rounded-full border border-zinc-200 bg-zinc-100 dark:border-[#2a2a2a] dark:bg-black">
+                {community.image ? (
+                  <Image
+                    src={community.image}
+                    alt={`${community.name} avatar`}
+                    width={16}
+                    height={16}
+                    className="h-full w-full object-cover"
+                  />
+                ) : null}
+              </span>
+              <span>Posted in {community.name}</span>
+            </Link>
+          ) : null}
         </div>
       </div>
     </motion.article>

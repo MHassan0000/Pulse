@@ -12,7 +12,7 @@ import { Search } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 type SearchbarProps = {
-  routeType?: "search" | "users";
+  routeType?: "search" | "users" | "communities";
 };
 
 const Searchbar = ({ routeType = "search" }: SearchbarProps) => {
@@ -39,7 +39,12 @@ const Searchbar = ({ routeType = "search" }: SearchbarProps) => {
       params.delete("page");
     }
 
-    const targetPath = routeType === "search" ? "/search" : pathname;
+    const targetPath =
+      routeType === "search"
+        ? "/search"
+        : routeType === "communities"
+          ? "/communities"
+          : pathname;
     const queryString = params.toString();
     startTransition(() => {
       router.push(queryString ? `${targetPath}?${queryString}` : targetPath);
