@@ -1,6 +1,6 @@
 import Feed from "@/components/feed/Feed";
 import { auth } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 import { fetchUser } from "@/lib/actions/user.actions";
 
 type HomeProps = {
@@ -41,6 +41,7 @@ export default async function Home({ searchParams }: HomeProps) {
       </div>
     );
   } catch (error) {
+    unstable_rethrow(error);
     const message = error instanceof Error ? error.message : "Unknown";
     console.error("Home render failed:", message);
     return (
