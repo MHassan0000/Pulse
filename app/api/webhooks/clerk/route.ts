@@ -2,15 +2,10 @@ import type { WebhookEvent } from "@clerk/nextjs/server";
 import { Webhook } from "svix";
 import { NextResponse } from "next/server";
 
-import {
-  addMemberToCommunity,
-  createCommunity,
-  deleteCommunity,
-  fetchCommunityDetails,
-  removeUserFromCommunity,
-  updateCommunityInfo,
-} from "@/lib/actions/community.actions";
-import { fetchUser } from "@/lib/actions/user.actions";
+import Community from "@/lib/models/community.model";
+import Thread from "@/lib/models/thread.model";
+import User from "@/lib/models/user.model";
+import { connectToDB } from "@/lib/mongoose";
 
 type EventType =
   | "organization.created"
@@ -29,6 +24,13 @@ type ClerkOrgData = {
   created_by?: string;
   organization?: { id?: string };
   public_user_data?: { user_id?: string };
+};
+
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : "Unknown error";
+
+const logWebhookError = (eventType: string, error: unknown) => {
+  console.error(`[clerk-webhook:${eventType}]`, getErrorMessage(error), error);
 };
 
 export const POST = async (request: Request) => {
@@ -64,56 +66,79 @@ export const POST = async (request: Request) => {
       "svix-timestamp": svixTimestamp,
       "svix-signature": svixSignature,
     }) as WebhookEvent;
-  } catch {
+  } catch (error) {
+    logWebhookError("signature", error);
     return NextResponse.json({ message: "Invalid webhook signature" }, { status: 400 });
   }
 
   const eventType = event.type as EventType;
   const data = (event.data ?? {}) as ClerkOrgData;
 
+  try {
+    await connectToDB();
+  } catch (error) {
+    logWebhookError(eventType, error);
+    return NextResponse.json(
+      { message: "Database connection failed" },
+      { status: 500 }
+    );
+  }
+
   // Listen organization creation event
   if (eventType === "organization.created") {
     const { id, name, slug, logo_url, image_url, created_by } = data;
 
     try {
-      if (!id || !name || !slug || !created_by) {
+      if (!id || !name) {
         return NextResponse.json({ message: "Missing organization data" }, { status: 400 });
       }
 
-      const owner = await fetchUser(created_by);
-      if (!owner?._id) {
-        // User sync can lag right after signup; let Clerk retry webhook.
-        return NextResponse.json(
-          { message: "Owner user not ready yet" },
-          { status: 202 }
-        );
-      }
+      const fallbackUsername = `community-${id.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+      const organizationUsername = (slug?.trim() || fallbackUsername).toLowerCase();
+      const organizationImage = logo_url || image_url || "";
 
-      try {
-        await createCommunity(
-          id,
-          name,
-          slug,
-          logo_url || image_url || "",
-          "org bio",
-          created_by
-        );
-      } catch (creationError) {
-        const message =
-          creationError instanceof Error ? creationError.message : "Unknown";
+      const community = await Community.findOneAndUpdate(
+        { id },
+        {
+          $set: {
+            id,
+            name,
+            username: organizationUsername,
+            image: organizationImage,
+            bio: "org bio",
+          },
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      ).select("_id");
 
-        // Idempotent webhook handling: organization may already exist.
-        if (
-          !message.toLowerCase().includes("duplicate") &&
-          !message.toLowerCase().includes("already exists")
-        ) {
-          throw creationError;
+      if (created_by) {
+        const owner = await User.findOne({ id: created_by }).select("_id");
+
+        if (!owner?._id) {
+          // User sync can lag after signup/onboarding. Return 500 to trigger retry.
+          return NextResponse.json(
+            { message: "Owner user not ready yet" },
+            { status: 500 }
+          );
         }
+
+        await Community.updateOne(
+          { _id: community._id },
+          {
+            $set: { createdBy: owner._id },
+            $addToSet: { members: owner._id },
+          }
+        );
+
+        await User.updateOne(
+          { _id: owner._id },
+          { $addToSet: { communities: community._id } }
+        );
       }
 
-      return NextResponse.json({ message: "User created" }, { status: 201 });
+      return NextResponse.json({ message: "Organization synced" }, { status: 200 });
     } catch (err) {
-      console.log(err);
+      logWebhookError(eventType, err);
       return NextResponse.json(
         { message: "Internal Server Error" },
         { status: 500 }
@@ -126,14 +151,11 @@ export const POST = async (request: Request) => {
   // add pending invites in the database.
   if (eventType === "organizationInvitation.created") {
     try {
-      console.log("Invitation created", data);
+      console.log("[clerk-webhook:organizationInvitation.created]", data);
 
-      return NextResponse.json(
-        { message: "Invitation created" },
-        { status: 201 }
-      );
+      return NextResponse.json({ message: "Invitation created" }, { status: 200 });
     } catch (err) {
-      console.log(err);
+      logWebhookError(eventType, err);
 
       return NextResponse.json(
         { message: "Internal Server Error" },
@@ -146,7 +168,7 @@ export const POST = async (request: Request) => {
   if (eventType === "organizationMembership.created") {
     try {
       const { organization, public_user_data } = data;
-      console.log("created", data);
+      console.log("[clerk-webhook:organizationMembership.created]", data);
 
       const organizationId = organization?.id;
       const memberId = public_user_data?.user_id;
@@ -155,38 +177,39 @@ export const POST = async (request: Request) => {
         return NextResponse.json({ message: "Missing membership data" }, { status: 400 });
       }
 
-      const community = await fetchCommunityDetails(organizationId);
-      const member = await fetchUser(memberId);
+      const community = await Community.findOne({ id: organizationId }).select(
+        "_id createdBy"
+      );
+      const member = await User.findOne({ id: memberId }).select("_id");
 
       if (!community || !member?._id) {
         // Retry-able scenario while sync catches up.
         return NextResponse.json(
           { message: "Membership references not ready" },
-          { status: 202 }
+          { status: 500 }
         );
       }
 
-      try {
-        await addMemberToCommunity(organizationId, memberId);
-      } catch (membershipError) {
-        const message =
-          membershipError instanceof Error ? membershipError.message : "Unknown";
-
-        // Idempotent webhook handling: member already added in prior event.
-        if (
-          !message.toLowerCase().includes("already a member") &&
-          !message.toLowerCase().includes("duplicate")
-        ) {
-          throw membershipError;
+      await Community.updateOne(
+        { _id: community._id },
+        {
+          $addToSet: { members: member._id },
+          ...(community.createdBy
+            ? {}
+            : {
+                $set: { createdBy: member._id },
+              }),
         }
-      }
-
-      return NextResponse.json(
-        { message: "Invitation accepted" },
-        { status: 201 }
       );
+
+      await User.updateOne(
+        { _id: member._id },
+        { $addToSet: { communities: community._id } }
+      );
+
+      return NextResponse.json({ message: "Member synced" }, { status: 200 });
     } catch (err) {
-      console.log(err);
+      logWebhookError(eventType, err);
 
       return NextResponse.json(
         { message: "Internal Server Error" },
@@ -199,7 +222,7 @@ export const POST = async (request: Request) => {
   if (eventType === "organizationMembership.deleted") {
     try {
       const { organization, public_user_data } = data;
-      console.log("removed", data);
+      console.log("[clerk-webhook:organizationMembership.deleted]", data);
 
       const organizationId = organization?.id;
       const memberId = public_user_data?.user_id;
@@ -208,25 +231,26 @@ export const POST = async (request: Request) => {
         return NextResponse.json({ message: "Missing membership data" }, { status: 400 });
       }
 
-      try {
-        await removeUserFromCommunity(memberId, organizationId);
-      } catch (removeError) {
-        const message =
-          removeError instanceof Error ? removeError.message : "Unknown";
+      const community = await Community.findOne({ id: organizationId }).select("_id");
+      const member = await User.findOne({ id: memberId }).select("_id");
 
-        // Idempotent webhook handling: user/community may already be detached.
-        if (
-          !message.toLowerCase().includes("user not found") &&
-          !message.toLowerCase().includes("community not found") &&
-          !message.toLowerCase().includes("not a member")
-        ) {
-          throw removeError;
-        }
+      // Idempotent behavior: if either side is missing, treat as already detached.
+      if (!community || !member) {
+        return NextResponse.json({ message: "Member already detached" }, { status: 200 });
       }
 
-      return NextResponse.json({ message: "Member removed" }, { status: 201 });
+      await Community.updateOne(
+        { _id: community._id },
+        { $pull: { members: member._id } }
+      );
+      await User.updateOne(
+        { _id: member._id },
+        { $pull: { communities: community._id } }
+      );
+
+      return NextResponse.json({ message: "Member removed" }, { status: 200 });
     } catch (err) {
-      console.log(err);
+      logWebhookError(eventType, err);
 
       return NextResponse.json(
         { message: "Internal Server Error" },
@@ -239,25 +263,30 @@ export const POST = async (request: Request) => {
   if (eventType === "organization.updated") {
     try {
       const { id, logo_url, image_url, name, slug } = data;
-      console.log("updated", data);
+      console.log("[clerk-webhook:organization.updated]", data);
 
-      if (!id || !name || !slug) {
+      if (!id || !name) {
         return NextResponse.json({ message: "Missing organization update data" }, { status: 400 });
       }
 
-      try {
-        await updateCommunityInfo(id, name, slug, logo_url || image_url || "");
-      } catch (updateError) {
-        const message =
-          updateError instanceof Error ? updateError.message : "Unknown";
-        if (!message.toLowerCase().includes("not found")) {
-          throw updateError;
-        }
-      }
+      const fallbackUsername = `community-${id.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+      const organizationUsername = (slug?.trim() || fallbackUsername).toLowerCase();
 
-      return NextResponse.json({ message: "Organization updated" }, { status: 201 });
+      await Community.findOneAndUpdate(
+        { id },
+        {
+          $set: {
+            name,
+            username: organizationUsername,
+            image: logo_url || image_url || "",
+          },
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+
+      return NextResponse.json({ message: "Organization updated" }, { status: 200 });
     } catch (err) {
-      console.log(err);
+      logWebhookError(eventType, err);
 
       return NextResponse.json(
         { message: "Internal Server Error" },
@@ -270,28 +299,28 @@ export const POST = async (request: Request) => {
   if (eventType === "organization.deleted") {
     try {
       const { id } = data;
-      console.log("deleted", data);
+      console.log("[clerk-webhook:organization.deleted]", data);
 
       if (!id) {
         return NextResponse.json({ message: "Missing organization id" }, { status: 400 });
       }
 
-      try {
-        await deleteCommunity(id);
-      } catch (deleteError) {
-        const message =
-          deleteError instanceof Error ? deleteError.message : "Unknown";
-        if (!message.toLowerCase().includes("not found")) {
-          throw deleteError;
-        }
+      const community = await Community.findOne({ id }).select("_id");
+
+      if (!community) {
+        return NextResponse.json({ message: "Organization already deleted" }, { status: 200 });
       }
 
-      return NextResponse.json(
-        { message: "Organization deleted" },
-        { status: 201 }
+      await Thread.deleteMany({ community: community._id });
+      await User.updateMany(
+        { communities: community._id },
+        { $pull: { communities: community._id } }
       );
+      await Community.deleteOne({ _id: community._id });
+
+      return NextResponse.json({ message: "Organization deleted" }, { status: 200 });
     } catch (err) {
-      console.log(err);
+      logWebhookError(eventType, err);
 
       return NextResponse.json(
         { message: "Internal Server Error" },
