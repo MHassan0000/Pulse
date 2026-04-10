@@ -78,14 +78,24 @@ export const POST = async (request: Request) => {
         return NextResponse.json({ message: "Missing organization data" }, { status: 400 });
       }
 
-      await createCommunity(
-        id,
-        name,
-        slug,
-        logo_url || image_url || "",
-        "org bio",
-        created_by
-      );
+      try {
+        await createCommunity(
+          id,
+          name,
+          slug,
+          logo_url || image_url || "",
+          "org bio",
+          created_by
+        );
+      } catch (creationError) {
+        const message =
+          creationError instanceof Error ? creationError.message : "Unknown";
+
+        // Idempotent webhook handling: organization may already exist.
+        if (!message.toLowerCase().includes("duplicate")) {
+          throw creationError;
+        }
+      }
 
       return NextResponse.json({ message: "User created" }, { status: 201 });
     } catch (err) {
@@ -131,7 +141,17 @@ export const POST = async (request: Request) => {
         return NextResponse.json({ message: "Missing membership data" }, { status: 400 });
       }
 
-      await addMemberToCommunity(organizationId, memberId);
+      try {
+        await addMemberToCommunity(organizationId, memberId);
+      } catch (membershipError) {
+        const message =
+          membershipError instanceof Error ? membershipError.message : "Unknown";
+
+        // Idempotent webhook handling: member already added in prior event.
+        if (!message.toLowerCase().includes("already a member")) {
+          throw membershipError;
+        }
+      }
 
       return NextResponse.json(
         { message: "Invitation accepted" },
@@ -160,7 +180,20 @@ export const POST = async (request: Request) => {
         return NextResponse.json({ message: "Missing membership data" }, { status: 400 });
       }
 
-      await removeUserFromCommunity(memberId, organizationId);
+      try {
+        await removeUserFromCommunity(memberId, organizationId);
+      } catch (removeError) {
+        const message =
+          removeError instanceof Error ? removeError.message : "Unknown";
+
+        // Idempotent webhook handling: user/community may already be detached.
+        if (
+          !message.toLowerCase().includes("user not found") &&
+          !message.toLowerCase().includes("community not found")
+        ) {
+          throw removeError;
+        }
+      }
 
       return NextResponse.json({ message: "Member removed" }, { status: 201 });
     } catch (err) {

@@ -1,3 +1,5 @@
+"use client";
+
 import Image from "next/image";
 import {
   OrganizationSwitcher,
@@ -25,7 +27,9 @@ const Topbar = () => {
         </div>
         <div className="flex items-center justify-end gap-3">
           <Show when="signed-out">
-            <SignInButton><button className="rounded-full border border-zinc-200 bg-white px-4 py-2 text-xs text-zinc-600 transition-all duration-200 cursor-pointer hover:bg-zinc-100 active:scale-[0.98] dark:border-[#1f1f1f] dark:bg-[#0a0a0a] dark:text-zinc-300 dark:hover:bg-zinc-900">Log in</button></SignInButton>
+            <SignInButton mode="modal" forceRedirectUrl="/" fallbackRedirectUrl="/">
+              Log in
+            </SignInButton>
           </Show>
           <Show when="signed-in">
             <div className="hidden sm:block">
