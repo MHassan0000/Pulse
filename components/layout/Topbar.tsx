@@ -3,6 +3,8 @@
 import Image from "next/image";
 import {
   OrganizationSwitcher,
+  ClerkLoaded,
+  ClerkLoading,
   SignInButton,
   Show,
   UserButton,
@@ -26,26 +28,35 @@ const Topbar = () => {
           Home
         </div>
         <div className="flex items-center justify-end gap-3">
-          <Show when="signed-out">
-            <SignInButton mode="modal" forceRedirectUrl="/" fallbackRedirectUrl="/">
-              Log in
-            </SignInButton>
-          </Show>
-          <Show when="signed-in">
-            <div className="hidden sm:block">
-              <OrganizationSwitcher
-                afterCreateOrganizationUrl="/communities"
-                afterSelectOrganizationUrl="/communities"
-                appearance={{
-                  elements: {
-                    organizationSwitcherTrigger:
-                      "h-9 rounded-full border border-zinc-200 bg-white px-3 text-xs dark:border-[#1f1f1f] dark:bg-[#0a0a0a]",
-                  },
-                }}
-              />
-            </div>
-            <UserButton />
-          </Show>
+          <ClerkLoading>
+            <div className="h-9 w-20 animate-pulse rounded-full border border-zinc-200 bg-zinc-100 dark:border-[#1f1f1f] dark:bg-zinc-900" />
+          </ClerkLoading>
+
+          <ClerkLoaded>
+            <Show when="signed-out">
+              <SignInButton mode="modal" forceRedirectUrl="/" fallbackRedirectUrl="/">
+                <button className="inline-flex h-9 min-w-[88px] cursor-pointer items-center justify-center rounded-full border border-zinc-200 bg-white px-4 text-xs font-semibold text-zinc-700 transition-all duration-200 hover:border-zinc-300 hover:bg-zinc-100 active:scale-[0.98] dark:border-[#1f1f1f] dark:bg-[#0a0a0a] dark:text-zinc-300 dark:hover:bg-zinc-900">
+                  Log in
+                </button>
+              </SignInButton>
+            </Show>
+
+            <Show when="signed-in">
+              <div className="hidden sm:block">
+                <OrganizationSwitcher
+                  afterCreateOrganizationUrl="/communities"
+                  afterSelectOrganizationUrl="/communities"
+                  appearance={{
+                    elements: {
+                      organizationSwitcherTrigger:
+                        "h-9 rounded-full border border-zinc-200 bg-white px-3 text-xs dark:border-[#1f1f1f] dark:bg-[#0a0a0a]",
+                    },
+                  }}
+                />
+              </div>
+              <UserButton />
+            </Show>
+          </ClerkLoaded>
         </div>
       </div>
     </header>

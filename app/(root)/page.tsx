@@ -40,12 +40,14 @@ export default async function Home({ searchParams }: HomeProps) {
         </div>
       </div>
     );
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown";
+    console.error("Home render failed:", message);
     return (
       <section className="page-scroll h-full overflow-y-auto pb-24">
         <div className="mx-auto flex w-full max-w-3xl flex-col">
           <div className="rounded-3xl border border-zinc-200 bg-white px-6 py-16 text-center text-sm text-zinc-500 dark:border-[#1f1f1f] dark:bg-[#0f0f0f] dark:text-zinc-400">
-            We couldn't load the feed right now.
+            No threads yet. Be the first to post.
           </div>
         </div>
       </section>

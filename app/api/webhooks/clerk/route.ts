@@ -6,9 +6,11 @@ import {
   addMemberToCommunity,
   createCommunity,
   deleteCommunity,
+  fetchCommunityDetails,
   removeUserFromCommunity,
   updateCommunityInfo,
 } from "@/lib/actions/community.actions";
+import { fetchUser } from "@/lib/actions/user.actions";
 
 type EventType =
   | "organization.created"
@@ -78,6 +80,15 @@ export const POST = async (request: Request) => {
         return NextResponse.json({ message: "Missing organization data" }, { status: 400 });
       }
 
+      const owner = await fetchUser(created_by);
+      if (!owner?._id) {
+        // User sync can lag right after signup; let Clerk retry webhook.
+        return NextResponse.json(
+          { message: "Owner user not ready yet" },
+          { status: 202 }
+        );
+      }
+
       try {
         await createCommunity(
           id,
@@ -142,6 +153,17 @@ export const POST = async (request: Request) => {
 
       if (!organizationId || !memberId) {
         return NextResponse.json({ message: "Missing membership data" }, { status: 400 });
+      }
+
+      const community = await fetchCommunityDetails(organizationId);
+      const member = await fetchUser(memberId);
+
+      if (!community || !member?._id) {
+        // Retry-able scenario while sync catches up.
+        return NextResponse.json(
+          { message: "Membership references not ready" },
+          { status: 202 }
+        );
       }
 
       try {

@@ -71,7 +71,7 @@ async function Page() {
       <section className="page-scroll h-full overflow-y-auto pb-24">
         <div className="mx-auto flex w-full max-w-3xl flex-col">
           <div className="rounded-3xl border border-zinc-200 bg-white px-6 py-16 text-center text-sm text-zinc-500 dark:border-[#1f1f1f] dark:bg-[#0f0f0f] dark:text-zinc-400">
-            We couldn't load activity right now.
+            We couldn&apos;t load activity right now.
           </div>
         </div>
       </section>
