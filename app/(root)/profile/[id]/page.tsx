@@ -6,11 +6,17 @@ import ThreadsTab from "@/components/profile/ThreadsTab";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import { fetchUser, fetchUserPosts } from "@/lib/actions/user.actions";
+import { fetchUser, fetchUserPosts, fetchUserStats } from "@/lib/actions/user.actions";
 
 type ProfileThread = {
-  _id?: { toString?: () => string } | string;
+  _id?: { toString?: () => string } | string | number;
   parentId?: string | null;
+};
+
+const threadIdToString = (value: ProfileThread["_id"]) => {
+  if (typeof value === "string") return value;
+  if (typeof value === "number") return String(value);
+  return value?.toString?.() ?? "";
 };
 
 async function Page({ params }: { params: Promise<{ id: string }> }) {
@@ -23,7 +29,10 @@ async function Page({ params }: { params: Promise<{ id: string }> }) {
   if (!userInfo) redirect("/");
   if (!userInfo?.onboarded) redirect("/onboarding");
 
-  const postsData = await fetchUserPosts(userInfo.id);
+  const [postsData, userStats] = await Promise.all([
+    fetchUserPosts(userInfo.id),
+    fetchUserStats(userInfo.id),
+  ]);
   const rawThreads = Array.isArray(postsData?.threads)
     ? (postsData.threads as ProfileThread[])
     : [];
@@ -31,22 +40,18 @@ async function Page({ params }: { params: Promise<{ id: string }> }) {
   const uniqueThreads = Array.from(
     new Map(
       rawThreads.map((thread) => [
-        typeof thread._id === "string"
-          ? thread._id
-          : thread._id?.toString?.() ?? "",
+        threadIdToString(thread._id),
         thread,
       ])
     ).values()
   ).filter((thread) => {
-    const idValue =
-      typeof thread._id === "string"
-        ? thread._id
-        : thread._id?.toString?.() ?? "";
+    const idValue = threadIdToString(thread._id);
     return Boolean(idValue);
   });
 
-  const threadCount = uniqueThreads.filter((thread) => !thread.parentId).length;
-  const replyCount = uniqueThreads.filter((thread) => !!thread.parentId).length;
+  const fallbackThreadCount = uniqueThreads.filter((thread) => !thread.parentId).length;
+  const threadCount = userStats.threadCount || fallbackThreadCount;
+  const replyCount = userStats.replyCount;
 
   return (
     <section className="page-scroll h-full overflow-y-auto pb-24">

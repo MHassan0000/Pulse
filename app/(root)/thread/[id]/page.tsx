@@ -124,7 +124,7 @@ async function Page({
         <Comment
           threadId={id}
           currentUserImg={user.imageUrl}
-          currentUserId={userInfo._id?.toString() ?? ""}
+          currentUserId={userInfo.id}
         />
       </div>
 

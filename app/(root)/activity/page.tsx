@@ -6,8 +6,9 @@ import { fetchUser, getActivity } from "@/lib/actions/user.actions";
 
 type ActivityRecord = {
   _id: unknown;
+  threadId?: string;
   parentId?: string | null;
-  type?: "reply" | "nested_reply" | "community";
+  type?: "reply" | "nested_reply" | "community" | "like" | "repost";
   author?: {
     id?: string;
     name?: string;
@@ -30,7 +31,7 @@ async function Page() {
     const userInfo = await fetchUser(user.id);
     if (!userInfo?.onboarded) redirect("/onboarding");
 
-    const activity = await getActivity(userInfo._id?.toString() ?? "");
+    const activity = await getActivity(userInfo.id);
 
     return (
       <section className="page-scroll h-full overflow-y-auto pb-24">
@@ -51,7 +52,7 @@ async function Page() {
                 activity.map((item: ActivityRecord) => (
                   <ActivityItem
                     key={String(item._id)}
-                    id={String(item._id)}
+                    id={item.threadId ?? String(item._id)}
                     parentId={item.parentId ?? null}
                     type={item.type}
                     author={{

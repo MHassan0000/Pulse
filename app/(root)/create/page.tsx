@@ -27,7 +27,7 @@ const CreateThread = async () => {
                             Share an update with your community. Keep it short or expand it.
                         </p>
                     </div>
-                    <PostThread userId={userInfo._id?.toString() ?? ""} />
+                    <PostThread userId={userInfo.id} />
                 </div>
             </div>
         </main>

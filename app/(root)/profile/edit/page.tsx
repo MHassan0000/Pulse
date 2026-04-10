@@ -14,7 +14,6 @@ const EditProfilePage = async () => {
 
   const userData = {
     id: user.id,
-    objectId: userInfo?._id?.toString() ?? "",
     username: userInfo?.username ?? user.username ?? "",
     name: userInfo?.name ?? user.fullName ?? user.firstName ?? "",
     bio: userInfo?.bio ?? "",

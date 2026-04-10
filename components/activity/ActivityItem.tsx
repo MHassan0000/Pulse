@@ -4,7 +4,7 @@ import Link from "next/link";
 type ActivityItemProps = {
   id: string;
   parentId: string | null;
-  type?: "reply" | "nested_reply" | "community";
+  type?: "reply" | "nested_reply" | "community" | "like" | "repost";
   author: {
     id?: string;
     name: string;
@@ -34,6 +34,10 @@ const ActivityItem = ({
       ? community?.name
         ? `posted in ${community.name}.`
         : "posted in one of your communities."
+      : type === "like"
+        ? "liked your thread."
+        : type === "repost"
+          ? "reposted your thread."
       : type === "nested_reply"
         ? "replied in a thread where you also replied."
         : "replied to your thread.";

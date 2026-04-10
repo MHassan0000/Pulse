@@ -76,25 +76,29 @@ export async function createThread({
   try {
     await connectToDB();
 
-    const communityIdObject = await Community.findOne(
-      { id: communityId },
-      { _id: 1 }
-    );
+    const authorUser = await User.findOne({ id: author }).select("_id");
+    if (!authorUser?._id) {
+      throw new Error("Author user not found");
+    }
+
+    const communityIdObject = communityId
+      ? await Community.findOne({ id: communityId }, { _id: 1 })
+      : null;
 
     const createdThread = await Thread.create({
       text,
-      author,
-      community: communityIdObject, // Assign communityId if provided, or leave it null for personal account
+      author: authorUser._id,
+      community: communityIdObject?._id ?? null,
     });
 
     // Update User model
-    await User.findByIdAndUpdate(author, {
+    await User.findByIdAndUpdate(authorUser._id, {
       $push: { threads: createdThread._id },
     });
 
-    if (communityIdObject) {
+    if (communityIdObject?._id) {
       // Update Community model
-      await Community.findByIdAndUpdate(communityIdObject, {
+      await Community.findByIdAndUpdate(communityIdObject._id, {
         $push: { threads: createdThread._id },
       });
     }
@@ -272,6 +276,11 @@ export async function addCommentToThread(
   await connectToDB();
 
   try {
+    const user = await User.findOne({ id: userId }).select("_id");
+    if (!user?._id) {
+      throw new Error("User not found");
+    }
+
     // Find the original thread by its ID
     const originalThread = await Thread.findById(threadId);
 
@@ -282,7 +291,7 @@ export async function addCommentToThread(
     // Create the new comment thread
     const commentThread = new Thread({
       text: commentText,
-      author: userId,
+      author: user._id,
       parentId: threadId, // Set the parentId to the original thread's ID
     });
 
@@ -290,7 +299,7 @@ export async function addCommentToThread(
     const savedCommentThread = await commentThread.save();
 
     // Keep user-thread relation updated for replies/profile tabs
-    await User.findByIdAndUpdate(userId, {
+    await User.findByIdAndUpdate(user._id, {
       $push: { threads: savedCommentThread._id },
     });
 
