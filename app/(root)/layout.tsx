@@ -1,8 +1,9 @@
-
 import Bottombar from "@/components/layout/BottomBar";
 import LeftSidebar from "@/components/layout/Sidebar";
 import RootViewport from "@/components/layout/RootViewport";
 import Topbar from "@/components/layout/Topbar";
+
+export const dynamic = "force-dynamic";
 
 const RootLayout = ({
   children,

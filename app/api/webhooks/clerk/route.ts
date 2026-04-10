@@ -92,7 +92,10 @@ export const POST = async (request: Request) => {
           creationError instanceof Error ? creationError.message : "Unknown";
 
         // Idempotent webhook handling: organization may already exist.
-        if (!message.toLowerCase().includes("duplicate")) {
+        if (
+          !message.toLowerCase().includes("duplicate") &&
+          !message.toLowerCase().includes("already exists")
+        ) {
           throw creationError;
         }
       }
@@ -148,7 +151,10 @@ export const POST = async (request: Request) => {
           membershipError instanceof Error ? membershipError.message : "Unknown";
 
         // Idempotent webhook handling: member already added in prior event.
-        if (!message.toLowerCase().includes("already a member")) {
+        if (
+          !message.toLowerCase().includes("already a member") &&
+          !message.toLowerCase().includes("duplicate")
+        ) {
           throw membershipError;
         }
       }
@@ -189,7 +195,8 @@ export const POST = async (request: Request) => {
         // Idempotent webhook handling: user/community may already be detached.
         if (
           !message.toLowerCase().includes("user not found") &&
-          !message.toLowerCase().includes("community not found")
+          !message.toLowerCase().includes("community not found") &&
+          !message.toLowerCase().includes("not a member")
         ) {
           throw removeError;
         }
@@ -216,7 +223,15 @@ export const POST = async (request: Request) => {
         return NextResponse.json({ message: "Missing organization update data" }, { status: 400 });
       }
 
-      await updateCommunityInfo(id, name, slug, logo_url || image_url || "");
+      try {
+        await updateCommunityInfo(id, name, slug, logo_url || image_url || "");
+      } catch (updateError) {
+        const message =
+          updateError instanceof Error ? updateError.message : "Unknown";
+        if (!message.toLowerCase().includes("not found")) {
+          throw updateError;
+        }
+      }
 
       return NextResponse.json({ message: "Organization updated" }, { status: 201 });
     } catch (err) {
@@ -239,7 +254,15 @@ export const POST = async (request: Request) => {
         return NextResponse.json({ message: "Missing organization id" }, { status: 400 });
       }
 
-      await deleteCommunity(id);
+      try {
+        await deleteCommunity(id);
+      } catch (deleteError) {
+        const message =
+          deleteError instanceof Error ? deleteError.message : "Unknown";
+        if (!message.toLowerCase().includes("not found")) {
+          throw deleteError;
+        }
+      }
 
       return NextResponse.json(
         { message: "Organization deleted" },
