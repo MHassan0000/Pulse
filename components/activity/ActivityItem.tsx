@@ -4,15 +4,39 @@ import Link from "next/link";
 type ActivityItemProps = {
   id: string;
   parentId: string | null;
+  type?: "reply" | "nested_reply" | "community";
   author: {
+    id?: string;
     name: string;
+    username?: string;
     image: string;
   };
+  community?: {
+    id: string;
+    name: string;
+    image: string;
+  } | null;
   createdAt?: string;
 };
 
-const ActivityItem = ({ id, parentId, author, createdAt }: ActivityItemProps) => {
+const ActivityItem = ({
+  id,
+  parentId,
+  type = "reply",
+  author,
+  community,
+  createdAt,
+}: ActivityItemProps) => {
   const targetThread = parentId ?? id;
+
+  const activityText =
+    type === "community"
+      ? community?.name
+        ? `posted in ${community.name}.`
+        : "posted in one of your communities."
+      : type === "nested_reply"
+        ? "replied in a thread where you also replied."
+        : "replied to your thread.";
 
   return (
     <Link
@@ -34,8 +58,11 @@ const ActivityItem = ({ id, parentId, author, createdAt }: ActivityItemProps) =>
       <div className="min-w-0 flex-1">
         <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-200">
           <span className="font-semibold text-zinc-900 dark:text-white">{author.name}</span>{" "}
-          replied to your thread.
+          {activityText}
         </p>
+        {author.username ? (
+          <p className="mt-1 text-xs text-zinc-500">@{author.username}</p>
+        ) : null}
         {createdAt ? (
           <p className="mt-1 text-xs text-zinc-500">{createdAt}</p>
         ) : null}

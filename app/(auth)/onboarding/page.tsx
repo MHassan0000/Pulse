@@ -36,7 +36,13 @@ const Page = async () => {
               Add your details so people can recognize you in the feed.
             </p>
           </div>
-          <AccountProfile user={userData} btnTitle="Continue" />
+          <AccountProfile
+            user={userData}
+            btnTitle="Continue"
+            heading="Set up your profile"
+            description="Choose a recognizable identity for your account before joining conversations."
+            profileMode="onboarding"
+          />
         </div>
       </div>
     </main>

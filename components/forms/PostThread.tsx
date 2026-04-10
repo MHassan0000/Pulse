@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { useOrganization } from "@clerk/nextjs";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { usePathname, useRouter } from "next/navigation";
-import { Smile, Text, X } from "lucide-react";
+import { Text, X } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import MDEditor, { commands } from "@uiw/react-md-editor";
 import { useTheme } from "@/components/theme/ThemeProvider";
@@ -83,19 +83,6 @@ const PostThread = ({ userId }: Props) => {
     []
   );
 
-  const handleEmojiOpen = () => {
-    const textarea = editorRef.current?.querySelector(
-      "textarea.w-md-editor-text-input"
-    ) as HTMLTextAreaElement | null;
-    textarea?.focus();
-
-    // Browsers cannot synthesize OS-level Win + . shortcut for security reasons.
-    // If running in an Electron shell with a native bridge, this hook allows true OS panel opening.
-    if (window.electron?.openEmojiPanel) {
-      window.electron.openEmojiPanel();
-    }
-  };
-
   return (
     <Form {...form}>
       <form
@@ -148,22 +135,14 @@ const PostThread = ({ userId }: Props) => {
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <div className="relative">
-                <button
-                  type="button"
-                  className="flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs text-zinc-600 transition-all duration-200 hover:bg-zinc-100 dark:border-[#1f1f1f] dark:bg-black dark:text-zinc-300 dark:hover:bg-zinc-900"
-                  onClick={handleEmojiOpen}
-                >
-                  <Smile className="h-4 w-4" />
-                  Emoji
-                </button>
+
               </div>
               <button
                 type="button"
-                className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition-all duration-200 ${
-                  isExpanded
+                className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition-all duration-200 ${isExpanded
                     ? "border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-black"
                     : "border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-100 dark:border-[#1f1f1f] dark:bg-black dark:text-zinc-300 dark:hover:bg-zinc-900"
-                }`}
+                  }`}
                 onClick={() => setIsExpanded((prev) => !prev)}
               >
                 <Text className="h-4 w-4" />

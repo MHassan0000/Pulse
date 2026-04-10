@@ -59,6 +59,21 @@ Important production notes:
   - `organizationMembership.created`
   - `organizationMembership.deleted`
 
+### Atlas Networking Checklist (for Vercel)
+
+If webhooks return `Database connection failed`, your Atlas cluster is not reachable from Vercel runtime.
+
+1. Atlas -> **Network Access** -> add an allow rule for `0.0.0.0/0` temporarily for testing.
+2. Atlas -> **Database Access** -> ensure the DB user in `MONGODB_URL` has read/write on your app DB.
+3. Atlas -> **Clusters** -> verify your cluster is not paused and is in a healthy state.
+4. Vercel -> **Project Settings -> Environment Variables**:
+   - verify `MONGODB_URL` value is present in **Production**
+   - verify `MONGODB_DB_NAME` (for example `pulse`)
+   - redeploy after any env change.
+5. Test endpoint after deploy:
+   - `GET /api/health/db` should return `200`.
+   - if it returns `503`, the response `detail` explains the exact DB connection issue.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

@@ -7,10 +7,18 @@ import { fetchUser, getActivity } from "@/lib/actions/user.actions";
 type ActivityRecord = {
   _id: unknown;
   parentId?: string | null;
+  type?: "reply" | "nested_reply" | "community";
   author?: {
+    id?: string;
     name?: string;
+    username?: string;
     image?: string;
   };
+  community?: {
+    id?: string;
+    name?: string;
+    image?: string;
+  } | null;
   createdAt?: string | Date;
 };
 
@@ -45,10 +53,22 @@ async function Page() {
                     key={String(item._id)}
                     id={String(item._id)}
                     parentId={item.parentId ?? null}
+                    type={item.type}
                     author={{
+                      id: item.author?.id ?? "",
                       name: item.author?.name ?? "Someone",
+                      username: item.author?.username ?? "",
                       image: item.author?.image ?? "",
                     }}
+                    community={
+                      item.community
+                        ? {
+                            id: item.community.id ?? "",
+                            name: item.community.name ?? "",
+                            image: item.community.image ?? "",
+                          }
+                        : null
+                    }
                     createdAt={
                       item.createdAt
                         ? new Date(item.createdAt).toISOString().slice(0, 16).replace("T", " ")

@@ -10,6 +10,37 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { fetchCommunityDetails } from "@/lib/actions/community.actions";
 
+export const dynamic = "force-dynamic";
+
+const safeText = (value: unknown) =>
+  typeof value === "string" ? value : "";
+
+const safeId = (value: unknown) => {
+  if (typeof value === "string") return value;
+  if (!value || typeof value !== "object") return "";
+
+  const objectIdLike = value as { _bsontype?: unknown; toHexString?: unknown; toString?: unknown };
+  if (objectIdLike._bsontype === "ObjectID" || objectIdLike._bsontype === "ObjectId") {
+    if (typeof objectIdLike.toHexString === "function") {
+      try {
+        return objectIdLike.toHexString();
+      } catch {
+        return "";
+      }
+    }
+
+    if (typeof objectIdLike.toString === "function") {
+      try {
+        return objectIdLike.toString();
+      } catch {
+        return "";
+      }
+    }
+  }
+
+  return "";
+};
+
 type CommunityMember = {
   id: string;
   name: string;
@@ -18,15 +49,15 @@ type CommunityMember = {
 };
 
 type CommunityDetailsShape = {
-  _id?: string | { toString?: () => string };
+  _id?: unknown;
   id: string;
   name: string;
   username: string;
   image: string;
   bio: string;
   createdBy?: { id?: string };
-  members?: CommunityMember[];
-  threads?: unknown[];
+  members?: Array<CommunityMember | { id?: unknown; name?: unknown; username?: unknown; image?: unknown }>;
+  threads?: Array<{ _id?: unknown }>;
 };
 
 async function Page({ params }: { params: Promise<{ id: string }> }) {
@@ -39,16 +70,26 @@ async function Page({ params }: { params: Promise<{ id: string }> }) {
     const communityDetails = (await fetchCommunityDetails(id)) as CommunityDetailsShape | null;
     if (!communityDetails) redirect("/communities");
 
-    const currentUserAppId = user.id;
-    const ownerUserId = communityDetails.createdBy?.id ?? "";
-    const memberIds = (communityDetails.members ?? []).map((member) => member.id);
-    const isMember = memberIds.includes(currentUserAppId);
-    const communityObjectId =
-      typeof communityDetails._id === "string"
-        ? communityDetails._id
-        : typeof communityDetails._id?.toString === "function"
-          ? communityDetails._id.toString()
-          : "";
+    const currentUserAppId = safeText(user.id);
+    const ownerUserId = safeText(communityDetails.createdBy?.id);
+    const normalizedMembers: CommunityMember[] = (communityDetails.members ?? []).map((member) => ({
+      id: safeText(member?.id),
+      name: safeText(member?.name),
+      username: safeText(member?.username),
+      image: safeText(member?.image),
+    }));
+    const communityThreadAccountId = safeText(communityDetails.id);
+    const threadCount = Array.isArray(communityDetails.threads)
+      ? new Set(
+          communityDetails.threads
+            .map((thread) => safeId(thread?._id))
+            .filter(Boolean)
+        ).size
+      : 0;
+
+    if (!communityThreadAccountId) {
+      redirect("/communities");
+    }
 
     return (
       <section className="page-scroll h-full overflow-y-auto pb-24">
@@ -63,14 +104,13 @@ async function Page({ params }: { params: Promise<{ id: string }> }) {
             type="Community"
             actionSlot={
               <CommunityActions
-                communityId={communityDetails.id}
+                communityId={communityThreadAccountId}
                 currentUserId={currentUserAppId}
                 ownerUserId={ownerUserId}
-                isMember={isMember}
-                isAuthenticated={!!user.id}
-                communityName={communityDetails.name}
-                communityUsername={communityDetails.username}
-                communityImage={communityDetails.image}
+                communityName={safeText(communityDetails.name)}
+                communityUsername={safeText(communityDetails.username)}
+                communityImage={safeText(communityDetails.image)}
+                communityBio={safeText(communityDetails.bio)}
               />
             }
           />
@@ -90,7 +130,7 @@ async function Page({ params }: { params: Promise<{ id: string }> }) {
                     <span>{tab.label}</span>
                     {tab.label === "Threads" ? (
                       <span className="ml-1 rounded-full bg-zinc-200 px-2 py-0.5 text-[10px] text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                        {communityDetails.threads?.length ?? 0}
+                        {threadCount}
                       </span>
                     ) : null}
                   </TabsTrigger>
@@ -100,7 +140,7 @@ async function Page({ params }: { params: Promise<{ id: string }> }) {
               <TabsContent value="threads" className="w-full">
                 <ThreadsTab
                   currentUserId={currentUserAppId}
-                  accountId={communityObjectId}
+                  accountId={communityThreadAccountId}
                   accountType="Community"
                   mode="threads"
                 />
@@ -109,11 +149,11 @@ async function Page({ params }: { params: Promise<{ id: string }> }) {
               <TabsContent value="members" className="w-full">
                 <section className="mt-6 flex flex-col gap-4">
                   {communityDetails.members?.length ? (
-                    communityDetails.members.map((member) => (
+                    normalizedMembers.map((member) => (
                       <MemberRow
                         key={member.id}
                         member={member}
-                        communityId={communityDetails.id}
+                        communityId={communityThreadAccountId}
                         currentUserId={currentUserAppId}
                         ownerUserId={ownerUserId}
                       />

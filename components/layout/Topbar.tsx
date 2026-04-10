@@ -44,8 +44,12 @@ const Topbar = () => {
             <Show when="signed-in">
               <div className="hidden sm:block">
                 <OrganizationSwitcher
-                  afterCreateOrganizationUrl="/communities"
-                  afterSelectOrganizationUrl="/communities"
+                  afterCreateOrganizationUrl={(organization) =>
+                    `/communities/${organization.id}`
+                  }
+                  afterSelectOrganizationUrl={(organization) =>
+                    `/communities/${organization.id}`
+                  }
                   appearance={{
                     elements: {
                       organizationSwitcherTrigger:

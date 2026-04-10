@@ -33,6 +33,12 @@ type ClerkOrgData = {
   public_user_data?: { user_id?: string };
 };
 
+type ClerkMembershipData = {
+  id?: string;
+  organization?: { id?: string };
+  public_user_data?: { user_id?: string };
+};
+
 type ClerkUserData = {
   id?: string;
   username?: string | null;
@@ -45,7 +51,7 @@ const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "Unknown error";
 
 const logWebhookError = (eventType: string, error: unknown) => {
-  console.error(`[clerk-webhook:${eventType}]`, getErrorMessage(error), error);
+  console.error(`[clerk-webhook:${eventType}] ${getErrorMessage(error)}`);
 };
 
 const isDatabaseConnectionError = (error: unknown) => {
@@ -170,9 +176,6 @@ const linkCommunityOwner = async (communityId: string, createdByClerkId: string)
   const owner = await User.findOne({ id: createdByClerkId }).select("_id");
 
   if (!owner?._id) {
-    console.warn(
-      `[clerk-webhook:organization.created] owner not found yet for created_by=${createdByClerkId}; community synced without owner linkage`
-    );
     return;
   }
 
@@ -189,11 +192,8 @@ const linkCommunityOwner = async (communityId: string, createdByClerkId: string)
       { _id: owner._id },
       { $addToSet: { communities: communityId } }
     );
-  } catch (error) {
-    console.warn(
-      `[clerk-webhook:organization.created] owner linkage failed for created_by=${createdByClerkId}`,
-      getErrorMessage(error)
-    );
+  } catch {
+    // Non-fatal for idempotent webhook flow.
   }
 };
 
@@ -274,9 +274,73 @@ const upsertUserFromClerk = async (data: ClerkUserData) => {
   }
 };
 
-export const POST = async (request: Request) => {
-  console.log("[clerk-webhook] request received");
+const upsertMembership = async (membership: ClerkMembershipData) => {
+  const organizationId = membership.organization?.id;
+  const memberId = membership.public_user_data?.user_id;
 
+  if (!organizationId || !memberId) {
+    throw new Error("Missing membership data");
+  }
+
+  const [community, member] = await Promise.all([
+    Community.findOne({ id: organizationId }).select("_id createdBy"),
+    User.findOne({ id: memberId }).select("_id"),
+  ]);
+
+  if (!community || !member?._id) {
+    return false;
+  }
+
+  await Community.updateOne(
+    { _id: community._id },
+    {
+      $addToSet: { members: member._id },
+      ...(community.createdBy
+        ? {}
+        : {
+            $set: { createdBy: member._id },
+          }),
+    }
+  );
+
+  await User.updateOne(
+    { _id: member._id },
+    { $addToSet: { communities: community._id } }
+  );
+
+  return true;
+};
+
+const removeMembership = async (membership: ClerkMembershipData) => {
+  const organizationId = membership.organization?.id;
+  const memberId = membership.public_user_data?.user_id;
+
+  if (!organizationId || !memberId) {
+    throw new Error("Missing membership data");
+  }
+
+  const [community, member] = await Promise.all([
+    Community.findOne({ id: organizationId }).select("_id"),
+    User.findOne({ id: memberId }).select("_id"),
+  ]);
+
+  if (!community || !member) {
+    return false;
+  }
+
+  await Community.updateOne(
+    { _id: community._id },
+    { $pull: { members: member._id } }
+  );
+  await User.updateOne(
+    { _id: member._id },
+    { $pull: { communities: community._id } }
+  );
+
+  return true;
+};
+
+export const POST = async (request: Request) => {
   const webhookSecret =
     process.env.CLERK_WEBHOOK_SECRET ||
     process.env.NEXT_CLERK_WEBHOOK_SECRET ||
@@ -318,10 +382,6 @@ export const POST = async (request: Request) => {
 
   const eventType = event.type as EventType;
   const data = (event.data ?? {}) as ClerkOrgData;
-  console.log(`[clerk-webhook:${eventType}] verified`, {
-    id: data.id,
-    createdBy: data.created_by,
-  });
 
   try {
     await connectToDB();
@@ -434,67 +494,17 @@ export const POST = async (request: Request) => {
   // Just to show. You can avoid this or tell people that we can create a new mongoose action and
   // add pending invites in the database.
   if (eventType === "organizationInvitation.created") {
-    try {
-      console.log("[clerk-webhook:organizationInvitation.created]", data);
-
-      return NextResponse.json({ message: "Invitation created" }, { status: 200 });
-    } catch (err) {
-      logWebhookError(eventType, err);
-      if (isDatabaseConnectionError(err)) {
-        return NextResponse.json(
-          { message: "Database temporarily unavailable" },
-          { status: 503 }
-        );
-      }
-
-      return NextResponse.json(
-        { message: "Internal Server Error" },
-        { status: 500 }
-      );
-    }
+    return NextResponse.json({ message: "Invitation event received" }, { status: 200 });
   }
 
   // Listen organization membership (member invite & accepted) creation
   if (eventType === "organizationMembership.created") {
     try {
-      const { organization, public_user_data } = data;
-      console.log("[clerk-webhook:organizationMembership.created]", data);
+      const isLinked = await upsertMembership(data as unknown as ClerkMembershipData);
 
-      const organizationId = organization?.id;
-      const memberId = public_user_data?.user_id;
-
-      if (!organizationId || !memberId) {
-        return NextResponse.json({ message: "Missing membership data" }, { status: 400 });
-      }
-
-      const community = await Community.findOne({ id: organizationId }).select(
-        "_id createdBy"
-      );
-      const member = await User.findOne({ id: memberId }).select("_id");
-
-      if (!community || !member?._id) {
-        console.warn(
-          `[clerk-webhook:${eventType}] references not ready (organizationId=${organizationId}, memberId=${memberId})`
-        );
+      if (!isLinked) {
         return NextResponse.json({ message: "Membership references not ready" }, { status: 200 });
       }
-
-      await Community.updateOne(
-        { _id: community._id },
-        {
-          $addToSet: { members: member._id },
-          ...(community.createdBy
-            ? {}
-            : {
-                $set: { createdBy: member._id },
-              }),
-        }
-      );
-
-      await User.updateOne(
-        { _id: member._id },
-        { $addToSet: { communities: community._id } }
-      );
 
       return NextResponse.json({ message: "Member synced" }, { status: 200 });
     } catch (err) {
@@ -516,32 +526,11 @@ export const POST = async (request: Request) => {
   // Listen member deletion event
   if (eventType === "organizationMembership.deleted") {
     try {
-      const { organization, public_user_data } = data;
-      console.log("[clerk-webhook:organizationMembership.deleted]", data);
+      const removed = await removeMembership(data as unknown as ClerkMembershipData);
 
-      const organizationId = organization?.id;
-      const memberId = public_user_data?.user_id;
-
-      if (!organizationId || !memberId) {
-        return NextResponse.json({ message: "Missing membership data" }, { status: 400 });
-      }
-
-      const community = await Community.findOne({ id: organizationId }).select("_id");
-      const member = await User.findOne({ id: memberId }).select("_id");
-
-      // Idempotent behavior: if either side is missing, treat as already detached.
-      if (!community || !member) {
+      if (!removed) {
         return NextResponse.json({ message: "Member already detached" }, { status: 200 });
       }
-
-      await Community.updateOne(
-        { _id: community._id },
-        { $pull: { members: member._id } }
-      );
-      await User.updateOne(
-        { _id: member._id },
-        { $pull: { communities: community._id } }
-      );
 
       return NextResponse.json({ message: "Member removed" }, { status: 200 });
     } catch (err) {
@@ -564,7 +553,6 @@ export const POST = async (request: Request) => {
   if (eventType === "organization.updated") {
     try {
       const { id, logo_url, image_url, name, slug } = data;
-      console.log("[clerk-webhook:organization.updated]", data);
 
       if (!id || !name) {
         return NextResponse.json({ message: "Missing organization update data" }, { status: 400 });
@@ -598,7 +586,6 @@ export const POST = async (request: Request) => {
   if (eventType === "organization.deleted") {
     try {
       const { id } = data;
-      console.log("[clerk-webhook:organization.deleted]", data);
 
       if (!id) {
         return NextResponse.json({ message: "Missing organization id" }, { status: 400 });

@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   deleteThread,
   toggleLikeThread,
@@ -64,6 +64,7 @@ const PostCard = ({
   isComment,
 }: PostCardProps) => {
   const pathname = usePathname();
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   const [optimisticLikes, setOptimisticLikes] = useOptimistic(
@@ -103,7 +104,13 @@ const PostCard = ({
   };
 
   const handleLike = () => {
-    if (!currentUserId || isPending) return;
+    if (!currentUserId) {
+      router.push(`/sign-up?redirect_url=${encodeURIComponent(pathname)}`);
+      return;
+    }
+
+    if (isPending) return;
+
     startTransition(async () => {
       setOptimisticLikes(currentUserId);
       await toggleLikeThread(id, currentUserId, pathname);
@@ -111,7 +118,13 @@ const PostCard = ({
   };
 
   const handleRepost = () => {
-    if (!currentUserId || isPending) return;
+    if (!currentUserId) {
+      router.push(`/sign-up?redirect_url=${encodeURIComponent(pathname)}`);
+      return;
+    }
+
+    if (isPending) return;
+
     startTransition(async () => {
       setOptimisticReposts(currentUserId);
       await toggleRepostThread(id, currentUserId, pathname);

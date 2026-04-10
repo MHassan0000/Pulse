@@ -9,6 +9,19 @@ import User from "../models/user.model";
 
 import { connectToDB } from "../mongoose";
 
+const sanitizeCommunityUsername = (value: string) =>
+  value
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9_-]/g, "")
+    .slice(0, 40);
+
+const isDuplicateKeyError = (error: unknown) => {
+  const message = error instanceof Error ? error.message.toLowerCase() : "";
+  return message.includes("duplicate key");
+};
+
 export async function createCommunity(
   id: string,
   name: string,
@@ -54,7 +67,14 @@ export async function fetchCommunityDetails(id: string) {
   try {
     await connectToDB();
 
-    const communityDetails = await Community.findOne({ id })
+    const normalizedId =
+      id?.match?.(/[a-f0-9]{24}/i)?.[0] ?? id;
+    const query =
+      mongoose.Types.ObjectId.isValid(normalizedId)
+        ? { $or: [{ id: normalizedId }, { _id: normalizedId }] }
+        : { id: normalizedId };
+
+    const communityDetails = await Community.findOne(query)
       .populate([
         {
           path: "createdBy",
@@ -87,7 +107,8 @@ export async function fetchCommunityDetails(id: string) {
             },
           },
         ],
-      });
+      })
+      .lean();
 
     return communityDetails;
   } catch (error) {
@@ -101,27 +122,39 @@ export async function fetchCommunityPosts(id: string) {
   try {
     await connectToDB();
 
-    const communityPosts = await Community.findById(id).populate({
-      path: "threads",
-      model: Thread,
-      options: { sort: { createdAt: -1 } },
-      populate: [
-        {
-          path: "author",
-          model: User,
-          select: "name image id", // Select the "name" and "_id" fields from the "User" model
-        },
-        {
-          path: "children",
-          model: Thread,
-          populate: {
+    const normalizedId =
+      id?.match?.(/[a-f0-9]{24}/i)?.[0] ?? id;
+
+    const query = mongoose.Types.ObjectId.isValid(normalizedId)
+      ? { $or: [{ id: normalizedId }, { _id: normalizedId }] }
+      : { id: normalizedId };
+
+    const community = await Community.findOne(query).select("_id");
+    if (!community?._id) return null;
+
+    const communityPosts = await Community.findById(community._id)
+      .populate({
+        path: "threads",
+        model: Thread,
+        options: { sort: { createdAt: -1 } },
+        populate: [
+          {
             path: "author",
             model: User,
-            select: "image _id", // Select the "name" and "_id" fields from the "User" model
+            select: "name image id", // Select the "name" and "_id" fields from the "User" model
           },
-        },
-      ],
-    });
+          {
+            path: "children",
+            model: Thread,
+            populate: {
+              path: "author",
+              model: User,
+              select: "image _id", // Select the "name" and "_id" fields from the "User" model
+            },
+          },
+        ],
+      })
+      .lean();
 
     return communityPosts;
   } catch (error) {
@@ -274,19 +307,68 @@ export async function updateCommunityInfo(
   communityId: string,
   name: string,
   username: string,
-  image: string
+  image: string,
+  bio: string
 ) {
   try {
     await connectToDB();
 
-    // Find the community by its _id and update the information
-    const updatedCommunity = await Community.findOneAndUpdate(
-      { id: communityId },
-      { name, username, image }
+    const normalizedName = name.trim();
+    const normalizedUsername = sanitizeCommunityUsername(username);
+    const normalizedImage = image.trim();
+    const normalizedBio = bio.trim();
+
+    if (normalizedName.length < 3) {
+      throw new Error("Community name must be at least 3 characters");
+    }
+
+    if (normalizedUsername.length < 3) {
+      throw new Error("Community username must be at least 3 characters");
+    }
+
+    if (normalizedBio.length < 3) {
+      throw new Error("Community bio must be at least 3 characters");
+    }
+
+    const existingCommunity = await Community.findOne({ id: communityId }).select("username");
+    if (!existingCommunity) {
+      throw new Error("Community not found");
+    }
+
+    const candidateHandles = Array.from(
+      new Set([
+        normalizedUsername,
+        `${normalizedUsername}-${communityId.slice(-6).toLowerCase()}`,
+        sanitizeCommunityUsername(existingCommunity.username ?? ""),
+      ].filter((value) => value && value.length >= 3))
     );
 
+    let updatedCommunity = null;
+
+    for (const handle of candidateHandles) {
+      try {
+        updatedCommunity = await Community.findOneAndUpdate(
+          { id: communityId },
+          {
+            name: normalizedName,
+            username: handle,
+            image: normalizedImage,
+            bio: normalizedBio,
+          }
+        );
+
+        if (updatedCommunity) break;
+      } catch (error) {
+        if (isDuplicateKeyError(error)) {
+          continue;
+        }
+
+        throw error;
+      }
+    }
+
     if (!updatedCommunity) {
-      throw new Error("Community not found");
+      throw new Error("Unable to update community handle. Please try a different username.");
     }
 
     return updatedCommunity;
@@ -358,6 +440,7 @@ export async function updateCommunityInfoAsAdmin(
   name: string,
   username: string,
   image: string,
+  bio: string,
   adminUserId: string,
   path: string
 ) {
@@ -376,7 +459,7 @@ export async function updateCommunityInfoAsAdmin(
     throw new Error("Only community admin can update this community");
   }
 
-  await updateCommunityInfo(communityId, name, username, image);
+  await updateCommunityInfo(communityId, name, username, image, bio);
   revalidatePath(path);
   revalidatePath(`/communities/${communityId}`);
   return { success: true };

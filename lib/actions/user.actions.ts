@@ -151,10 +151,15 @@ export async function fetchUserPosts(userId: string) {
   try {
     await connectToDB();
 
+    const user = await User.findOne({ id: userId }).select("_id");
+    if (!user?._id) return null;
+
     // Find all threads authored by the user with the given userId
-    const threads = await User.findOne({ id: userId }).populate({
+    const threads = await User.findById(user._id).populate({
       path: "threads",
       model: Thread,
+      options: { sort: { createdAt: -1 } },
+      match: { author: user._id },
       populate: [
         {
           path: "community",
@@ -172,6 +177,9 @@ export async function fetchUserPosts(userId: string) {
         },
       ],
     });
+
+    if (!threads) return null;
+
     return threads;
   } catch (error) {
     console.error("Error fetching user threads:", error);
@@ -242,25 +250,173 @@ export async function getActivity(userId: string) {
   try {
     await connectToDB();
 
-    // Find all threads created by the user
-    const userThreads = await Thread.find({ author: userId });
+    const currentUser = await User.findOne({ id: userId }).select("_id communities");
+    if (!currentUser?._id) {
+      return [];
+    }
 
-    // Collect all the child thread ids (replies) from the 'children' field of each user thread
-    const childThreadIds = userThreads.reduce((acc, userThread) => {
-      return acc.concat(userThread.children);
-    }, []);
+    const currentUserObjectId = String(currentUser._id);
 
-    // Find and return the child threads (replies) excluding the ones created by the same user
-    const replies = await Thread.find({
-      _id: { $in: childThreadIds },
-      author: { $ne: userId }, // Exclude threads authored by the same user
-    }).populate({
-      path: "author",
-      model: User,
-      select: "name image _id",
+    const ownThreads = await Thread.find({ author: currentUser._id })
+      .select("_id author parentId community createdAt")
+      .lean();
+
+    const ownThreadIds = ownThreads.map((thread) => thread._id);
+
+    const directRepliesPromise = Thread.find({
+      parentId: { $in: ownThreadIds },
+      author: { $ne: currentUser._id },
+    })
+      .select("_id parentId author community createdAt")
+      .populate({
+        path: "author",
+        model: User,
+        select: "id name username image",
+      })
+      .populate({
+        path: "community",
+        model: Community,
+        select: "id name image",
+      })
+      .lean();
+
+    const replyThreadIds = ownThreads
+      .filter((thread) => !!thread.parentId)
+      .map((thread) => thread._id);
+
+    const nestedRepliesPromise = Thread.find({
+      parentId: { $in: replyThreadIds },
+      author: { $ne: currentUser._id },
+    })
+      .select("_id parentId author community createdAt")
+      .populate({
+        path: "author",
+        model: User,
+        select: "id name username image",
+      })
+      .populate({
+        path: "community",
+        model: Community,
+        select: "id name image",
+      })
+      .lean();
+
+    const communityIds = Array.isArray(currentUser.communities)
+      ? currentUser.communities
+      : [];
+
+    const communityActivityPromise = communityIds.length
+      ? Thread.find({
+          community: { $in: communityIds },
+          author: { $ne: currentUser._id },
+        })
+          .select("_id parentId author community createdAt")
+          .populate({
+            path: "author",
+            model: User,
+            select: "id name username image",
+          })
+          .populate({
+            path: "community",
+            model: Community,
+            select: "id name image",
+          })
+          .lean()
+      : Promise.resolve([]);
+
+    const [directReplies, nestedReplies, communityActivity] = await Promise.all([
+      directRepliesPromise,
+      nestedRepliesPromise,
+      communityActivityPromise,
+    ]);
+
+    type RawActivityItem = {
+      _id: unknown;
+      parentId?: unknown;
+      createdAt?: unknown;
+      author?: {
+        _id?: unknown;
+        id?: string;
+        name?: string;
+        username?: string;
+        image?: string;
+      };
+      community?: {
+        id?: string;
+        name?: string;
+        image?: string;
+      } | null;
+    };
+
+    const collected = [
+      ...(directReplies as RawActivityItem[]).map((item) => ({
+        ...item,
+        type: "reply" as const,
+      })),
+      ...(nestedReplies as RawActivityItem[]).map((item) => ({
+        ...item,
+        type: "nested_reply" as const,
+      })),
+      ...(communityActivity as RawActivityItem[]).map((item) => ({
+        ...item,
+        type: "community" as const,
+      })),
+    ];
+
+    const activityMap = new Map<string, {
+      _id: string;
+      parentId: string | null;
+      createdAt: string;
+      type: "reply" | "nested_reply" | "community";
+      author: {
+        id: string;
+        name: string;
+        username: string;
+        image: string;
+      };
+      community: {
+        id: string;
+        name: string;
+        image: string;
+      } | null;
+    }>();
+
+    for (const item of collected) {
+      const activityId = String(item._id ?? "");
+      if (!activityId) continue;
+
+      const authorId = String(item.author?._id ?? "");
+      if (!authorId || authorId === currentUserObjectId) continue;
+      if (activityMap.has(activityId)) continue;
+
+      const createdAt = item.createdAt
+        ? new Date(item.createdAt as string | number | Date).toISOString()
+        : new Date().toISOString();
+
+      activityMap.set(activityId, {
+        _id: activityId,
+        parentId: item.parentId ? String(item.parentId) : null,
+        createdAt,
+        type: item.type,
+        author: {
+          id: item.author?.id ?? "",
+          name: item.author?.name ?? "Someone",
+          username: item.author?.username ?? "",
+          image: item.author?.image ?? "",
+        },
+        community: item.community
+          ? {
+              id: item.community.id ?? "",
+              name: item.community.name ?? "",
+              image: item.community.image ?? "",
+            }
+          : null,
+      });
+    }
+
+    return Array.from(activityMap.values()).sort((a, b) => {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
-
-    return replies;
   } catch (error) {
     console.error("Error fetching replies: ", error);
     throw error;

@@ -1,14 +1,10 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
-import {
-  deleteCommunityAsAdmin,
-  joinCommunity,
-  leaveCommunity,
-} from "@/lib/actions/community.actions";
+import { deleteCommunityAsAdmin } from "@/lib/actions/community.actions";
 import {
   Dialog,
   DialogClose,
@@ -25,42 +21,26 @@ type CommunityActionsProps = {
   communityId: string;
   currentUserId: string;
   ownerUserId: string;
-  isMember: boolean;
-  isAuthenticated: boolean;
   communityName: string;
   communityUsername: string;
   communityImage: string;
+  communityBio: string;
 };
 
 const CommunityActions = ({
   communityId,
   currentUserId,
   ownerUserId,
-  isMember,
-  isAuthenticated,
   communityName,
   communityUsername,
   communityImage,
+  communityBio,
 }: CommunityActionsProps) => {
   const pathname = usePathname();
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
-  const [localMember, setLocalMember] = useState(isMember);
+  const [, startTransition] = useTransition();
 
   const isAdmin = currentUserId === ownerUserId;
-
-  const handleJoinLeave = () => {
-    startTransition(async () => {
-      if (localMember) {
-        await leaveCommunity(communityId, currentUserId, pathname);
-        setLocalMember(false);
-        return;
-      }
-
-      await joinCommunity(communityId, currentUserId, pathname);
-      setLocalMember(true);
-    });
-  };
 
   const handleDeleteCommunity = () => {
     startTransition(async () => {
@@ -72,19 +52,6 @@ const CommunityActions = ({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Button
-        type="button"
-        onClick={handleJoinLeave}
-        disabled={pending || !isAuthenticated || isAdmin}
-        className={`rounded-full px-4 text-xs font-semibold ${
-          localMember
-            ? "border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100 dark:border-[#1f1f1f] dark:bg-black dark:text-zinc-200 dark:hover:bg-zinc-900"
-            : "bg-zinc-900 text-white hover:bg-black dark:bg-white dark:text-black dark:hover:bg-zinc-200"
-        }`}
-      >
-        {isAdmin ? "Admin" : localMember ? "Leave" : "Join"}
-      </Button>
-
       {isAdmin ? (
         <>
           <CommunitySettingsDialog
@@ -93,6 +60,7 @@ const CommunityActions = ({
             defaultName={communityName}
             defaultUsername={communityUsername}
             defaultImage={communityImage}
+            defaultBio={communityBio}
           />
 
           <Dialog>

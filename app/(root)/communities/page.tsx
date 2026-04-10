@@ -24,12 +24,15 @@ async function Page({
 
     const pageNumber = resolvedSearchParams?.page ? +resolvedSearchParams.page : 1;
     const normalizedPageNumber = Number.isFinite(pageNumber) && pageNumber > 0 ? pageNumber : 1;
+    const query = (resolvedSearchParams.q ?? "").trim();
 
-    const result = await fetchCommunities({
-      searchString: resolvedSearchParams.q,
-      pageNumber: normalizedPageNumber,
-      pageSize: 25,
-    });
+    const result = query
+      ? await fetchCommunities({
+          searchString: query,
+          pageNumber: normalizedPageNumber,
+          pageSize: 25,
+        })
+      : { communities: [], isNext: false };
 
     return (
       <section className="page-scroll h-full overflow-y-auto pb-24">
@@ -43,35 +46,42 @@ async function Page({
               <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
                 Discover communities and join conversations that matter to you.
               </p>
+              <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
+                Use search to find a community by name or handle.
+              </p>
             </div>
 
             <Searchbar routeType="communities" />
 
-            <section className="mt-8 flex flex-wrap gap-4">
-              {result.communities.length === 0 ? (
-                <div className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-6 py-12 text-center text-sm text-zinc-500 dark:border-[#1f1f1f] dark:bg-black dark:text-zinc-400">
-                  No result found.
-                </div>
-              ) : (
-                result.communities.map((community) => (
-                  <CommunityCard
-                    key={community.id}
-                    id={community.id}
-                    name={community.name}
-                    username={community.username}
-                    imgUrl={community.image}
-                    bio={community.bio}
-                    members={community.members}
-                  />
-                ))
-              )}
-            </section>
+            {query ? (
+              <>
+                <section className="mt-8 flex flex-wrap gap-4">
+                  {result.communities.length === 0 ? (
+                    <div className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-6 py-12 text-center text-sm text-zinc-500 dark:border-[#1f1f1f] dark:bg-black dark:text-zinc-400">
+                      No result found.
+                    </div>
+                  ) : (
+                    result.communities.map((community) => (
+                      <CommunityCard
+                        key={community.id}
+                        id={community.id}
+                        name={community.name}
+                        username={community.username}
+                        imgUrl={community.image}
+                        bio={community.bio}
+                        members={community.members}
+                      />
+                    ))
+                  )}
+                </section>
 
-            <Pagination
-              path="communities"
-              pageNumber={normalizedPageNumber}
-              isNext={result.isNext}
-            />
+                <Pagination
+                  path="communities"
+                  pageNumber={normalizedPageNumber}
+                  isNext={result.isNext}
+                />
+              </>
+            ) : null}
           </div>
         </div>
       </section>

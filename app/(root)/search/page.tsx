@@ -23,6 +23,7 @@ async function Page({
 
     const pageNumber = resolvedSearchParams?.page ? +resolvedSearchParams.page : 1;
     const normalizedPageNumber = Number.isFinite(pageNumber) && pageNumber > 0 ? pageNumber : 1;
+    const query = (resolvedSearchParams.q ?? "").trim();
 
     return (
       <section className="page-scroll h-full overflow-y-auto pb-24">
@@ -40,25 +41,27 @@ async function Page({
 
             <Searchbar routeType="search" />
 
-            <Suspense
-              key={`${resolvedSearchParams.q ?? ""}-${normalizedPageNumber}`}
-              fallback={
-                <div className="mt-8 flex flex-col gap-4">
-                  {Array.from({ length: 5 }).map((_, index) => (
-                    <div
-                      key={index}
-                      className="h-20 animate-pulse rounded-2xl border border-zinc-200 bg-zinc-50 dark:border-[#1f1f1f] dark:bg-black"
-                    />
-                  ))}
-                </div>
-              }
-            >
-              <SearchResults
-                userId={user.id}
-                query={resolvedSearchParams.q}
-                pageNumber={normalizedPageNumber}
-              />
-            </Suspense>
+            {query ? (
+              <Suspense
+                key={`${query}-${normalizedPageNumber}`}
+                fallback={
+                  <div className="mt-8 flex flex-col gap-4">
+                    {Array.from({ length: 5 }).map((_, index) => (
+                      <div
+                        key={index}
+                        className="h-20 animate-pulse rounded-2xl border border-zinc-200 bg-zinc-50 dark:border-[#1f1f1f] dark:bg-black"
+                      />
+                    ))}
+                  </div>
+                }
+              >
+                <SearchResults
+                  userId={user.id}
+                  query={query}
+                  pageNumber={normalizedPageNumber}
+                />
+              </Suspense>
+            ) : null}
           </div>
         </div>
       </section>

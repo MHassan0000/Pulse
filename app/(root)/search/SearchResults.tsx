@@ -13,9 +13,14 @@ const SearchResults = async ({
   query,
   pageNumber,
 }: SearchResultsProps) => {
+  const trimmedQuery = (query ?? "").trim();
+  if (!trimmedQuery) {
+    return null;
+  }
+
   const result = await fetchUsers({
     userId,
-    searchString: query,
+    searchString: trimmedQuery,
     pageNumber,
     pageSize: 25,
   });

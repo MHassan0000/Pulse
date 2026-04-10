@@ -6,7 +6,12 @@ import ThreadsTab from "@/components/profile/ThreadsTab";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import { fetchUser } from "@/lib/actions/user.actions";
+import { fetchUser, fetchUserPosts } from "@/lib/actions/user.actions";
+
+type ProfileThread = {
+  _id?: { toString?: () => string } | string;
+  parentId?: string | null;
+};
 
 async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -18,9 +23,30 @@ async function Page({ params }: { params: Promise<{ id: string }> }) {
   if (!userInfo) redirect("/");
   if (!userInfo?.onboarded) redirect("/onboarding");
 
-  const threadCount = Array.isArray(userInfo.threads)
-    ? userInfo.threads.length
-    : 0;
+  const postsData = await fetchUserPosts(userInfo.id);
+  const rawThreads = Array.isArray(postsData?.threads)
+    ? (postsData.threads as ProfileThread[])
+    : [];
+
+  const uniqueThreads = Array.from(
+    new Map(
+      rawThreads.map((thread) => [
+        typeof thread._id === "string"
+          ? thread._id
+          : thread._id?.toString?.() ?? "",
+        thread,
+      ])
+    ).values()
+  ).filter((thread) => {
+    const idValue =
+      typeof thread._id === "string"
+        ? thread._id
+        : thread._id?.toString?.() ?? "";
+    return Boolean(idValue);
+  });
+
+  const threadCount = uniqueThreads.filter((thread) => !thread.parentId).length;
+  const replyCount = uniqueThreads.filter((thread) => !!thread.parentId).length;
 
   return (
     <section className="page-scroll h-full overflow-y-auto pb-24">
@@ -51,13 +77,12 @@ async function Page({ params }: { params: Promise<{ id: string }> }) {
                     <span className="ml-1 rounded-full bg-zinc-200 px-2 py-0.5 text-[10px] text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
                       {threadCount}
                     </span>
-                  ) : tab.label === "Replies" ? (
-                    <span className="ml-1 rounded-full bg-zinc-200 px-2 py-0.5 text-[10px] text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                      {/* TODO: replace with dedicated reply count action */}
-                      {threadCount}
-                    </span>
-                  ) : null}
-                </TabsTrigger>
+                    ) : tab.label === "Replies" ? (
+                      <span className="ml-1 rounded-full bg-zinc-200 px-2 py-0.5 text-[10px] text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                        {replyCount}
+                      </span>
+                    ) : null}
+                  </TabsTrigger>
               ))}
             </TabsList>
 
