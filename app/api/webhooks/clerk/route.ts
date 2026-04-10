@@ -7,6 +7,9 @@ import Thread from "@/lib/models/thread.model";
 import User from "@/lib/models/user.model";
 import { connectToDB } from "@/lib/mongoose";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 type EventType =
   | "organization.created"
   | "organizationInvitation.created"
@@ -32,6 +35,12 @@ const getErrorMessage = (error: unknown) =>
 const logWebhookError = (eventType: string, error: unknown) => {
   console.error(`[clerk-webhook:${eventType}]`, getErrorMessage(error), error);
 };
+
+const buildFallbackUsername = (organizationId: string) =>
+  `community-${organizationId.replace(/[^a-zA-Z0-9_-]/g, "-")}`.toLowerCase();
+
+const isDuplicateKeyError = (error: unknown) =>
+  getErrorMessage(error).toLowerCase().includes("duplicate key");
 
 export const POST = async (request: Request) => {
   const webhookSecret =
@@ -93,47 +102,70 @@ export const POST = async (request: Request) => {
         return NextResponse.json({ message: "Missing organization data" }, { status: 400 });
       }
 
-      const fallbackUsername = `community-${id.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+      const fallbackUsername = buildFallbackUsername(id);
       const organizationUsername = (slug?.trim() || fallbackUsername).toLowerCase();
       const organizationImage = logo_url || image_url || "";
 
-      const community = await Community.findOneAndUpdate(
-        { id },
-        {
-          $set: {
-            id,
-            name,
-            username: organizationUsername,
-            image: organizationImage,
-            bio: "org bio",
+      let community;
+      try {
+        community = await Community.findOneAndUpdate(
+          { id },
+          {
+            $set: {
+              id,
+              name,
+              username: organizationUsername,
+              image: organizationImage,
+              bio: "org bio",
+            },
           },
-        },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
-      ).select("_id");
+          { upsert: true, new: true, setDefaultsOnInsert: true }
+        ).select("_id");
+      } catch (error) {
+        if (!isDuplicateKeyError(error) || organizationUsername === fallbackUsername) {
+          throw error;
+        }
+
+        community = await Community.findOneAndUpdate(
+          { id },
+          {
+            $set: {
+              id,
+              name,
+              username: fallbackUsername,
+              image: organizationImage,
+              bio: "org bio",
+            },
+          },
+          { upsert: true, new: true, setDefaultsOnInsert: true }
+        ).select("_id");
+      }
+
+      if (!community?._id) {
+        throw new Error("Failed to create or update community record");
+      }
 
       if (created_by) {
         const owner = await User.findOne({ id: created_by }).select("_id");
 
-        if (!owner?._id) {
-          // User sync can lag after signup/onboarding. Return 500 to trigger retry.
-          return NextResponse.json(
-            { message: "Owner user not ready yet" },
-            { status: 500 }
+        if (owner?._id) {
+          await Community.updateOne(
+            { _id: community._id },
+            {
+              $set: { createdBy: owner._id },
+              $addToSet: { members: owner._id },
+            }
+          );
+
+          await User.updateOne(
+            { _id: owner._id },
+            { $addToSet: { communities: community._id } }
+          );
+        } else {
+          console.warn(
+            `[clerk-webhook:${eventType}] owner not found yet for created_by=${created_by}; community synced without owner linkage`
           );
         }
-
-        await Community.updateOne(
-          { _id: community._id },
-          {
-            $set: { createdBy: owner._id },
-            $addToSet: { members: owner._id },
-          }
-        );
-
-        await User.updateOne(
-          { _id: owner._id },
-          { $addToSet: { communities: community._id } }
-        );
       }
 
       return NextResponse.json({ message: "Organization synced" }, { status: 200 });
@@ -183,11 +215,10 @@ export const POST = async (request: Request) => {
       const member = await User.findOne({ id: memberId }).select("_id");
 
       if (!community || !member?._id) {
-        // Retry-able scenario while sync catches up.
-        return NextResponse.json(
-          { message: "Membership references not ready" },
-          { status: 500 }
+        console.warn(
+          `[clerk-webhook:${eventType}] references not ready (organizationId=${organizationId}, memberId=${memberId})`
         );
+        return NextResponse.json({ message: "Membership references not ready" }, { status: 200 });
       }
 
       await Community.updateOne(
@@ -269,20 +300,40 @@ export const POST = async (request: Request) => {
         return NextResponse.json({ message: "Missing organization update data" }, { status: 400 });
       }
 
-      const fallbackUsername = `community-${id.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+      const fallbackUsername = buildFallbackUsername(id);
       const organizationUsername = (slug?.trim() || fallbackUsername).toLowerCase();
 
-      await Community.findOneAndUpdate(
-        { id },
-        {
-          $set: {
-            name,
-            username: organizationUsername,
-            image: logo_url || image_url || "",
+      try {
+        await Community.findOneAndUpdate(
+          { id },
+          {
+            $set: {
+              id,
+              name,
+              username: organizationUsername,
+              image: logo_url || image_url || "",
+            },
           },
-        },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
-      );
+          { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
+      } catch (error) {
+        if (!isDuplicateKeyError(error) || organizationUsername === fallbackUsername) {
+          throw error;
+        }
+
+        await Community.findOneAndUpdate(
+          { id },
+          {
+            $set: {
+              id,
+              name,
+              username: fallbackUsername,
+              image: logo_url || image_url || "",
+            },
+          },
+          { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
+      }
 
       return NextResponse.json({ message: "Organization updated" }, { status: 200 });
     } catch (err) {
