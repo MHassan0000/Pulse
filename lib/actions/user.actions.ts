@@ -12,6 +12,87 @@ import { connectToDB } from "../mongoose";
 const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "Unknown error";
 
+const sanitizeUsername = (value: string) =>
+  value
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9_-]/g, "")
+    .slice(0, 50);
+
+const fallbackUsernameFromId = (userId: string) =>
+  sanitizeUsername(`user-${userId}`) || `user-${Date.now()}`;
+
+type EnsureUserFromClerkParams = {
+  userId: string;
+  username?: string | null;
+  name?: string | null;
+  image?: string | null;
+};
+
+export async function ensureUserFromClerk({
+  userId,
+  username,
+  name,
+  image,
+}: EnsureUserFromClerkParams) {
+  try {
+    await connectToDB();
+
+    const existingUser = await User.findOne({ id: userId });
+    if (existingUser) return existingUser;
+
+    const preferredUsername = sanitizeUsername(username ?? "");
+    const fallbackUsername = fallbackUsernameFromId(userId);
+    const resolvedUsername = preferredUsername || fallbackUsername;
+    const resolvedName = (name ?? "").trim() || resolvedUsername;
+    const resolvedImage = image ?? "";
+
+    try {
+      return await User.findOneAndUpdate(
+        { id: userId },
+        {
+          $setOnInsert: {
+            id: userId,
+            username: resolvedUsername,
+            name: resolvedName,
+            image: resolvedImage,
+            bio: "",
+            onboarded: false,
+            threads: [],
+            communities: [],
+          },
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+    } catch (error) {
+      const message = getErrorMessage(error).toLowerCase();
+      if (!message.includes("duplicate key") || resolvedUsername === fallbackUsername) {
+        throw error;
+      }
+
+      return await User.findOneAndUpdate(
+        { id: userId },
+        {
+          $setOnInsert: {
+            id: userId,
+            username: fallbackUsername,
+            name: resolvedName,
+            image: resolvedImage,
+            bio: "",
+            onboarded: false,
+            threads: [],
+            communities: [],
+          },
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+    }
+  } catch (error: unknown) {
+    throw new Error(`Failed to ensure user: ${getErrorMessage(error)}`);
+  }
+};
+
 
 export async function fetchUser(userId: string) {
   try {

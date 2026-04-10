@@ -36,7 +36,21 @@ const Feed = async ({
   pageSize = 10,
   currentUserId,
 }: FeedProps) => {
-  const { posts, isNext } = await fetchPosts(pageNumber, pageSize);
+  let posts: FeedPost[] = [];
+  let isNext = false;
+
+  try {
+    const result = await fetchPosts(pageNumber, pageSize);
+    posts = result.posts as FeedPost[];
+    isNext = result.isNext;
+  } catch (error) {
+    console.error("Feed fetch failed:", error);
+    return (
+      <div className="rounded-3xl border border-zinc-200 bg-white px-6 py-16 text-center text-sm text-zinc-500 dark:border-[#1f1f1f] dark:bg-[#111111] dark:text-zinc-400">
+        Feed is temporarily unavailable. Please refresh in a moment.
+      </div>
+    );
+  }
 
   if (!posts.length) {
     return (
