@@ -8,9 +8,21 @@ interface Props {
   pageNumber: number;
   isNext: boolean;
   path: string;
+  queryKey?: string;
+  tabKey?: string;
+  tabValue?: string;
+  preserveQueryKeys?: string[];
 }
 
-function Pagination({ pageNumber, isNext, path }: Props) {
+function Pagination({
+  pageNumber,
+  isNext,
+  path,
+  queryKey = "page",
+  tabKey,
+  tabValue,
+  preserveQueryKeys,
+}: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -23,12 +35,29 @@ function Pagination({ pageNumber, isNext, path }: Props) {
       nextPageNumber = pageNumber + 1;
     }
 
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams();
+
+    if (preserveQueryKeys?.length) {
+      preserveQueryKeys.forEach((key) => {
+        const value = searchParams.get(key);
+        if (value) {
+          params.set(key, value);
+        }
+      });
+    } else {
+      searchParams.forEach((value, key) => {
+        params.set(key, value);
+      });
+    }
+
+    if (tabKey && tabValue) {
+      params.set(tabKey, tabValue);
+    }
 
     if (nextPageNumber > 1) {
-      params.set("page", String(nextPageNumber));
+      params.set(queryKey, String(nextPageNumber));
     } else {
-      params.delete("page");
+      params.delete(queryKey);
     }
 
     const query = params.toString();
@@ -36,7 +65,7 @@ function Pagination({ pageNumber, isNext, path }: Props) {
     router.push(query ? `${basePath}?${query}` : basePath);
   };
 
-  if (!isNext && pageNumber === 1) return null;
+  if (!isNext) return null;
 
   return (
     <div className="mt-10 flex items-center justify-center gap-3">

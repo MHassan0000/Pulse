@@ -1,8 +1,10 @@
 import { currentUser } from "@clerk/nextjs/server";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { communityTabs } from "@/constants";
 import ThreadsTab from "@/components/profile/ThreadsTab";
+import Pagination from "@/components/layout/Pagination";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import CommunityActions from "@/components/community/CommunityActions";
 import MemberRow from "@/components/community/MemberRow";
@@ -14,32 +16,6 @@ export const dynamic = "force-dynamic";
 
 const safeText = (value: unknown) =>
   typeof value === "string" ? value : "";
-
-const safeId = (value: unknown) => {
-  if (typeof value === "string") return value;
-  if (!value || typeof value !== "object") return "";
-
-  const objectIdLike = value as { _bsontype?: unknown; toHexString?: unknown; toString?: unknown };
-  if (objectIdLike._bsontype === "ObjectID" || objectIdLike._bsontype === "ObjectId") {
-    if (typeof objectIdLike.toHexString === "function") {
-      try {
-        return objectIdLike.toHexString();
-      } catch {
-        return "";
-      }
-    }
-
-    if (typeof objectIdLike.toString === "function") {
-      try {
-        return objectIdLike.toString();
-      } catch {
-        return "";
-      }
-    }
-  }
-
-  return "";
-};
 
 type CommunityMember = {
   id: string;
@@ -55,14 +31,31 @@ type CommunityDetailsShape = {
   username: string;
   image: string;
   bio: string;
+  threadCount?: number;
   createdBy?: { id?: string };
   members?: Array<CommunityMember | { id?: unknown; name?: unknown; username?: unknown; image?: unknown }>;
-  threads?: Array<{ _id?: unknown }>;
 };
 
-async function Page({ params }: { params: Promise<{ id: string }> }) {
+type CommunitySearchParams = {
+  tab?: string;
+  threadsPage?: string;
+};
+
+const resolvePositivePage = (value: string | undefined) => {
+  const pageNumber = Number(value ?? 1);
+  return Number.isFinite(pageNumber) && pageNumber > 0 ? pageNumber : 1;
+};
+
+async function Page({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<CommunitySearchParams>;
+}) {
   try {
     const { id } = await params;
+    const resolvedSearchParams = searchParams ? await searchParams : undefined;
 
     const user = await currentUser();
     if (!user) redirect("/sign-in");
@@ -79,17 +72,51 @@ async function Page({ params }: { params: Promise<{ id: string }> }) {
       image: safeText(member?.image),
     }));
     const communityThreadAccountId = safeText(communityDetails.id);
-    const threadCount = Array.isArray(communityDetails.threads)
-      ? new Set(
-          communityDetails.threads
-            .map((thread) => safeId(thread?._id))
-            .filter(Boolean)
-        ).size
-      : 0;
+    const threadCount =
+      typeof communityDetails.threadCount === "number"
+        ? communityDetails.threadCount
+        : 0;
 
     if (!communityThreadAccountId) {
       redirect("/communities");
     }
+
+    const communityPathname = `/communities/${id}`;
+    const activeTab =
+      resolvedSearchParams?.tab === "threads" ||
+      resolvedSearchParams?.tab === "members" ||
+      resolvedSearchParams?.tab === "requests"
+        ? resolvedSearchParams.tab
+        : "threads";
+    const threadsPage = resolvePositivePage(resolvedSearchParams?.threadsPage);
+
+    const tabHref = (tabValue: "threads" | "members" | "requests") => {
+      const paramsValue = new URLSearchParams();
+      paramsValue.set("tab", tabValue);
+
+      if (tabValue === "threads" && threadsPage > 1) {
+        paramsValue.set("threadsPage", String(threadsPage));
+      }
+
+      if (tabValue !== "threads" && threadsPage > 1) {
+        paramsValue.set("threadsPage", String(threadsPage));
+      }
+
+      const query = paramsValue.toString();
+      return query ? `${communityPathname}?${query}` : communityPathname;
+    };
+
+    const threadTabResult =
+      activeTab === "threads"
+        ? await ThreadsTab({
+            currentUserId: currentUserAppId,
+            accountId: communityThreadAccountId,
+            accountType: "Community",
+            mode: "threads",
+            pageNumber: threadsPage,
+            pageSize: 10,
+          })
+        : null;
 
     return (
       <section className="page-scroll h-full overflow-y-auto pb-24">
@@ -116,7 +143,7 @@ async function Page({ params }: { params: Promise<{ id: string }> }) {
           />
 
           <div className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-[0_20px_60px_rgba(0,0,0,0.06)] dark:border-[#1f1f1f] dark:bg-[#0f0f0f] md:p-6">
-            <Tabs defaultValue="threads" className="w-full">
+            <Tabs value={activeTab} className="w-full">
               <TabsList
                 variant="line"
                 className="w-full justify-start gap-2 overflow-x-auto rounded-2xl border border-zinc-200 bg-zinc-50 p-1 dark:border-[#1f1f1f] dark:bg-black"
@@ -124,26 +151,39 @@ async function Page({ params }: { params: Promise<{ id: string }> }) {
                 {communityTabs.map((tab) => (
                   <TabsTrigger
                     key={tab.label}
+                    asChild
                     value={tab.value}
                     className="rounded-xl px-4 py-2 text-xs"
                   >
-                    <span>{tab.label}</span>
-                    {tab.label === "Threads" ? (
-                      <span className="ml-1 rounded-full bg-zinc-200 px-2 py-0.5 text-[10px] text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                        {threadCount}
-                      </span>
-                    ) : null}
+                    <Link
+                      href={tabHref(tab.value as "threads" | "members" | "requests")}
+                    >
+                      <span>{tab.label}</span>
+                      {tab.label === "Threads" ? (
+                        <span className="ml-1 rounded-full bg-zinc-200 px-2 py-0.5 text-[10px] text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                          {threadCount}
+                        </span>
+                      ) : null}
+                    </Link>
                   </TabsTrigger>
                 ))}
               </TabsList>
 
               <TabsContent value="threads" className="w-full">
-                <ThreadsTab
-                  currentUserId={currentUserAppId}
-                  accountId={communityThreadAccountId}
-                  accountType="Community"
-                  mode="threads"
-                />
+                {activeTab === "threads" ? (
+                  <>
+                    {threadTabResult?.content}
+                    <Pagination
+                      path={communityPathname}
+                      pageNumber={threadsPage}
+                      isNext={Boolean(threadTabResult?.isNext)}
+                      queryKey="threadsPage"
+                      tabKey="tab"
+                      tabValue="threads"
+                      preserveQueryKeys={["tab"]}
+                    />
+                  </>
+                ) : null}
               </TabsContent>
 
               <TabsContent value="members" className="w-full">

@@ -73,6 +73,8 @@ type RawResult = {
   image?: string;
   id?: string;
   threads?: RawThread[];
+  isNext?: boolean;
+  totalCount?: number;
 };
 
 interface Props {
@@ -80,6 +82,8 @@ interface Props {
   accountId: string;
   accountType: "User" | "Community";
   mode?: "threads" | "replies";
+  pageNumber?: number;
+  pageSize?: number;
 }
 
 async function ThreadsTab({
@@ -87,16 +91,27 @@ async function ThreadsTab({
   accountId,
   accountType,
   mode = "threads",
+  pageNumber = 1,
+  pageSize = 10,
 }: Props) {
   let rawResult: RawResult | null;
 
   if (accountType === "Community") {
-    rawResult = (await fetchCommunityPosts(accountId)) as unknown as RawResult;
+    rawResult = (await fetchCommunityPosts(accountId, {
+      pageNumber,
+      pageSize,
+    })) as unknown as RawResult;
   } else {
     rawResult = (
       mode === "replies"
-        ? await fetchUserRepliesReceived(accountId)
-        : await fetchUserPosts(accountId)
+        ? await fetchUserRepliesReceived(accountId, {
+            pageNumber,
+            pageSize,
+          })
+        : await fetchUserPosts(accountId, {
+            pageNumber,
+            pageSize,
+          })
     ) as unknown as RawResult;
   }
 
@@ -146,49 +161,57 @@ async function ThreadsTab({
       ? result.threads.filter((thread) => !!thread.parentId)
       : result.threads.filter((thread) => !thread.parentId);
 
+  const isNext = Boolean(rawResult.isNext);
+
   if (!filteredThreads.length) {
-    return (
-      <div className="rounded-3xl border border-zinc-200 bg-white px-6 py-16 text-center text-sm text-zinc-500 dark:border-[#1f1f1f] dark:bg-[#111111] dark:text-zinc-400">
-        {mode === "replies" ? "No replies yet." : "No threads yet."}
-      </div>
-    );
+    return {
+      content: (
+        <div className="rounded-3xl border border-zinc-200 bg-white px-6 py-16 text-center text-sm text-zinc-500 dark:border-[#1f1f1f] dark:bg-[#111111] dark:text-zinc-400">
+          {mode === "replies" ? "No replies yet." : "No threads yet."}
+        </div>
+      ),
+      isNext: false,
+    };
   }
 
-  return (
-    <section className="mt-6 flex flex-col gap-4">
-      {filteredThreads.map((thread) => (
-        <div
-          key={thread._id}
-          className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-[0_16px_50px_rgba(0,0,0,0.04)] dark:border-[#1f1f1f] dark:bg-[#0f0f0f]"
-        >
-          <PostCard
-            id={thread._id}
-            currentUserId={currentUserId}
-            parentId={thread.parentId}
-            content={thread.text}
-            author={
-              accountType === "User" && mode === "threads"
-                ? { name: result.name, image: result.image, id: result.id }
-                : {
-                    name: thread.author.name,
-                    image: thread.author.image,
-                    id: thread.author.id,
-                  }
-            }
-            community={
-              accountType === "Community"
-                ? { name: result.name, id: result.id, image: result.image }
-                : thread.community
-            }
-            createdAt={thread.createdAt}
-            comments={thread.children}
-            likes={thread.likes}
-            reposts={thread.reposts}
-          />
-        </div>
-      ))}
-    </section>
-  );
+  return {
+    content: (
+      <section className="mt-6 flex flex-col gap-4">
+        {filteredThreads.map((thread) => (
+          <div
+            key={thread._id}
+            className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-[0_16px_50px_rgba(0,0,0,0.04)] dark:border-[#1f1f1f] dark:bg-[#0f0f0f]"
+          >
+            <PostCard
+              id={thread._id}
+              currentUserId={currentUserId}
+              parentId={thread.parentId}
+              content={thread.text}
+              author={
+                accountType === "User" && mode === "threads"
+                  ? { name: result.name, image: result.image, id: result.id }
+                  : {
+                      name: thread.author.name,
+                      image: thread.author.image,
+                      id: thread.author.id,
+                    }
+              }
+              community={
+                accountType === "Community"
+                  ? { name: result.name, id: result.id, image: result.image }
+                  : thread.community
+              }
+              createdAt={thread.createdAt}
+              comments={thread.children}
+              likes={thread.likes}
+              reposts={thread.reposts}
+            />
+          </div>
+        ))}
+      </section>
+    ),
+    isNext,
+  };
 }
 
 export default ThreadsTab;

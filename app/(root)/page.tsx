@@ -1,12 +1,11 @@
-import Feed from "@/components/feed/Feed";
+import FeedInfinite from "@/components/feed/FeedInfinite";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { ensureUserFromClerk, fetchUser } from "@/lib/actions/user.actions";
+import { fetchPostsCursor } from "@/lib/actions/thread.actions";
 
 type HomeProps = {
-  searchParams?: Promise<{
-    page?: string;
-  }>;
+  searchParams?: Promise<Record<string, string | undefined>>;
 };
 
 export const dynamic = "force-dynamic";
@@ -69,17 +68,20 @@ export default async function Home({ searchParams }: HomeProps) {
       }
     }
 
-    const resolvedSearchParams = searchParams ? await searchParams : undefined;
-    const pageNumber = Number(resolvedSearchParams?.page ?? 1);
-    const safePageNumber = Number.isFinite(pageNumber) && pageNumber > 0 ? pageNumber : 1;
+    if (searchParams) {
+      await searchParams;
+    }
+
+    const initialFeed = await fetchPostsCursor({ pageSize: 10 });
 
     return (
       <div className="flex h-full w-full flex-col min-h-0">
         <div className="flex-1 min-h-0 rounded-3xl border border-zinc-200 bg-white dark:border-[#1f1f1f] dark:bg-[#111111]">
           <div className="h-full overflow-y-auto pb-24 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-            <Feed
-              pageNumber={safePageNumber}
-              pageSize={10}
+            <FeedInfinite
+              initialPosts={initialFeed.posts}
+              initialCursor={initialFeed.nextCursor}
+              hasInitialNext={initialFeed.hasNext}
               currentUserId={userId ?? ""}
             />
           </div>

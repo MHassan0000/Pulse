@@ -2,7 +2,8 @@ import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 
 import ActivityItem from "@/components/activity/ActivityItem";
-import { fetchUser, getActivity } from "@/lib/actions/user.actions";
+import Pagination from "@/components/layout/Pagination";
+import { fetchUser, getActivityPaginated } from "@/lib/actions/user.actions";
 
 type ActivityRecord = {
   _id: unknown;
@@ -23,15 +24,28 @@ type ActivityRecord = {
   createdAt?: string | Date;
 };
 
-async function Page() {
+async function Page({
+  searchParams,
+}: {
+  searchParams?: Promise<{ page?: string }>;
+}) {
   try {
+    const resolvedSearchParams = searchParams ? await searchParams : undefined;
+
     const user = await currentUser();
     if (!user) redirect("/sign-in");
 
     const userInfo = await fetchUser(user.id);
     if (!userInfo?.onboarded) redirect("/onboarding");
 
-    const activity = await getActivity(userInfo.id);
+    const pageNumber = Number(resolvedSearchParams?.page ?? 1);
+    const normalizedPageNumber = Number.isFinite(pageNumber) && pageNumber > 0 ? pageNumber : 1;
+
+    const { activity, isNext } = await getActivityPaginated({
+      userId: userInfo.id,
+      pageNumber: normalizedPageNumber,
+      pageSize: 20,
+    });
 
     return (
       <section className="page-scroll h-full overflow-y-auto pb-24">
@@ -83,6 +97,12 @@ async function Page() {
                 </div>
               )}
             </section>
+
+            <Pagination
+              path="activity"
+              pageNumber={normalizedPageNumber}
+              isNext={isNext}
+            />
           </div>
         </div>
       </section>

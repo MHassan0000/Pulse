@@ -1,4 +1,3 @@
-import Link from "next/link";
 import PostCard from "@/components/feed/PostCard";
 import { fetchPosts } from "@/lib/actions/thread.actions";
 
@@ -37,12 +36,10 @@ const Feed = async ({
   currentUserId,
 }: FeedProps) => {
   let posts: FeedPost[] = [];
-  let isNext = false;
 
   try {
     const result = await fetchPosts(pageNumber, pageSize);
     posts = result.posts as FeedPost[];
-    isNext = result.isNext;
   } catch (error) {
     console.error("Feed fetch failed:", error);
     return (
@@ -119,27 +116,6 @@ const Feed = async ({
           reposts={post.reposts}
         />
       ))}
-      <div className="flex items-center justify-between px-5 py-6 text-xs text-zinc-500">
-        <span>Page {pageNumber}</span>
-        <div className="flex items-center gap-3">
-          {pageNumber > 1 ? (
-            <Link
-              className="rounded-full border border-zinc-200 px-3 py-1 transition-colors hover:border-zinc-300 hover:text-zinc-700 dark:border-[#1f1f1f] dark:hover:border-zinc-700 dark:hover:text-zinc-300"
-              href={`/?page=${pageNumber - 1}`}
-            >
-              Previous
-            </Link>
-          ) : null}
-          {isNext ? (
-            <Link
-              className="rounded-full border border-zinc-200 px-3 py-1 transition-colors hover:border-zinc-300 hover:text-zinc-700 dark:border-[#1f1f1f] dark:hover:border-zinc-700 dark:hover:text-zinc-300"
-              href={`/?page=${pageNumber + 1}`}
-            >
-              Next
-            </Link>
-          ) : null}
-        </div>
-      </div>
     </div>
   );
 };

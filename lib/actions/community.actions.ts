@@ -22,6 +22,103 @@ const isDuplicateKeyError = (error: unknown) => {
   return message.includes("duplicate key");
 };
 
+const toIdString = (value: unknown) => {
+  if (typeof value === "string") return value;
+  if (typeof value === "number") return String(value);
+  if (value && typeof value === "object" && "toString" in value) {
+    try {
+      return String((value as { toString: () => string }).toString());
+    } catch {
+      return "";
+    }
+  }
+
+  return "";
+};
+
+const toIsoDateString = (value: unknown) => {
+  if (!value) return "";
+  const date = new Date(value as string | number | Date);
+  return Number.isNaN(date.getTime()) ? "" : date.toISOString();
+};
+
+type CommunityThreadView = {
+  _id: unknown;
+  text?: unknown;
+  parentId?: unknown;
+  author?: {
+    id?: unknown;
+    name?: unknown;
+    image?: unknown;
+  } | null;
+  community?: {
+    id?: unknown;
+    name?: unknown;
+    image?: unknown;
+  } | null;
+  createdAt?: unknown;
+  children?: Array<{ author?: { image?: unknown } | null }>;
+  likes?: unknown[];
+  reposts?: unknown[];
+};
+
+type SerializedCommunityThread = {
+  _id: string;
+  text: string;
+  parentId: string | null;
+  author: {
+    id: string;
+    name: string;
+    image: string;
+  };
+  community: {
+    id: string;
+    name: string;
+    image: string;
+  } | null;
+  createdAt: string;
+  children: Array<{ author: { image: string } }>;
+  likes: string[];
+  reposts: string[];
+};
+
+const serializeCommunityThread = (
+  thread: CommunityThreadView
+): SerializedCommunityThread => ({
+  _id: toIdString(thread._id),
+  text: typeof thread.text === "string" ? thread.text : "",
+  parentId: toIdString(thread.parentId) || null,
+  author: {
+    id: toIdString(thread.author?.id),
+    name: typeof thread.author?.name === "string" ? thread.author.name : "Unknown",
+    image: typeof thread.author?.image === "string" ? thread.author.image : "",
+  },
+  community: thread.community
+    ? {
+        id: toIdString(thread.community.id),
+        name: typeof thread.community.name === "string" ? thread.community.name : "",
+        image: typeof thread.community.image === "string" ? thread.community.image : "",
+      }
+    : null,
+  createdAt: toIsoDateString(thread.createdAt),
+  children: Array.isArray(thread.children)
+    ? thread.children.map((child) => ({
+        author: {
+          image:
+            typeof child?.author?.image === "string"
+              ? child.author.image
+              : "",
+        },
+      }))
+    : [],
+  likes: Array.isArray(thread.likes)
+    ? thread.likes.map((value) => String(value))
+    : [],
+  reposts: Array.isArray(thread.reposts)
+    ? thread.reposts.map((value) => String(value))
+    : [],
+});
+
 export async function createCommunity(
   id: string,
   name: string,
@@ -87,30 +184,21 @@ export async function fetchCommunityDetails(id: string) {
           select: "name username image _id id",
         },
       ])
-      .populate({
-        path: "threads",
-        model: Thread,
-        options: { sort: { createdAt: -1 } },
-        populate: [
-          {
-            path: "author",
-            model: User,
-            select: "name image id",
-          },
-          {
-            path: "children",
-            model: Thread,
-            populate: {
-              path: "author",
-              model: User,
-              select: "image _id",
-            },
-          },
-        ],
-      })
       .lean();
 
-    return communityDetails;
+    if (!communityDetails?._id) {
+      return null;
+    }
+
+    const threadCount = await Thread.countDocuments({
+      community: communityDetails._id,
+      parentId: { $in: [null, undefined, ""] },
+    });
+
+    return {
+      ...communityDetails,
+      threadCount,
+    };
   } catch (error) {
     // Handle any errors
     console.error("Error fetching community details:", error);
@@ -118,7 +206,16 @@ export async function fetchCommunityDetails(id: string) {
   }
 }
 
-export async function fetchCommunityPosts(id: string) {
+export async function fetchCommunityPosts(
+  id: string,
+  {
+    pageNumber = 1,
+    pageSize = 10,
+  }: {
+    pageNumber?: number;
+    pageSize?: number;
+  } = {}
+) {
   try {
     await connectToDB();
 
@@ -132,31 +229,60 @@ export async function fetchCommunityPosts(id: string) {
     const community = await Community.findOne(query).select("_id");
     if (!community?._id) return null;
 
-    const communityPosts = await Community.findById(community._id)
-      .populate({
-        path: "threads",
-        model: Thread,
-        options: { sort: { createdAt: -1 } },
-        populate: [
-          {
+    const normalizedPageNumber = Number.isFinite(pageNumber) && pageNumber > 0 ? pageNumber : 1;
+    const normalizedPageSize = Number.isFinite(pageSize) && pageSize > 0 ? pageSize : 10;
+    const skipAmount = (normalizedPageNumber - 1) * normalizedPageSize;
+
+    const threadQuery = {
+      community: community._id,
+      parentId: { $in: [null, undefined, ""] },
+    };
+
+    const totalCount = await Thread.countDocuments(threadQuery);
+
+    const rawThreads = await Thread.find(threadQuery)
+      .sort({ createdAt: -1 })
+      .skip(skipAmount)
+      .limit(normalizedPageSize)
+      .populate([
+        {
+          path: "author",
+          model: User,
+          select: "name image id",
+        },
+        {
+          path: "community",
+          model: Community,
+          select: "id name image",
+        },
+        {
+          path: "children",
+          model: Thread,
+          populate: {
             path: "author",
             model: User,
-            select: "name image id", // Select the "name" and "_id" fields from the "User" model
+            select: "image _id",
           },
-          {
-            path: "children",
-            model: Thread,
-            populate: {
-              path: "author",
-              model: User,
-              select: "image _id", // Select the "name" and "_id" fields from the "User" model
-            },
-          },
-        ],
-      })
+        },
+      ])
       .lean();
 
-    return communityPosts;
+    const threads = (rawThreads as CommunityThreadView[]).map(serializeCommunityThread);
+
+    const communityInfo = await Community.findById(community._id)
+      .select("id name image")
+      .lean();
+
+    if (!communityInfo) return null;
+
+    return {
+      id: communityInfo.id,
+      name: communityInfo.name,
+      image: communityInfo.image,
+      threads,
+      isNext: totalCount > skipAmount + threads.length,
+      totalCount,
+    };
   } catch (error) {
     // Handle any errors
     console.error("Error fetching community posts:", error);

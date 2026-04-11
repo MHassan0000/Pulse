@@ -1,5 +1,6 @@
 "use server";
 
+import mongoose from "mongoose";
 import { revalidatePath } from "next/cache";
 
 import { connectToDB } from "../mongoose";
@@ -15,6 +16,120 @@ type DescendantThread = {
   _id: unknown;
   author?: { _id?: unknown } | null;
   community?: { _id?: unknown } | null;
+};
+
+type FeedPostAuthor = {
+  id: string;
+  name: string;
+  image: string;
+};
+
+type FeedPostCommunity = {
+  id: string;
+  name: string;
+  image: string;
+} | null;
+
+type FeedPostChild = {
+  author: {
+    image: string;
+  };
+};
+
+type FeedPost = {
+  _id: string;
+  parentId: string | null;
+  text: string;
+  createdAt: string;
+  author: FeedPostAuthor;
+  community: FeedPostCommunity;
+  children: FeedPostChild[];
+  likes: string[];
+  reposts: string[];
+};
+
+const toIdString = (value: unknown) => {
+  if (typeof value === "string") return value;
+  if (typeof value === "number") return String(value);
+  if (value && typeof value === "object" && "toString" in value) {
+    try {
+      return String((value as { toString: () => string }).toString());
+    } catch {
+      return "";
+    }
+  }
+
+  return "";
+};
+
+const toIsoDateString = (value: unknown) => {
+  if (!value) return "";
+  const date = new Date(value as string | number | Date);
+  return Number.isNaN(date.getTime()) ? "" : date.toISOString();
+};
+
+const serializeFeedPost = (post: {
+  _id?: unknown;
+  parentId?: unknown;
+  text?: unknown;
+  createdAt?: unknown;
+  author?: {
+    id?: unknown;
+    name?: unknown;
+    image?: unknown;
+    _id?: unknown;
+  } | null;
+  community?: {
+    id?: unknown;
+    name?: unknown;
+    image?: unknown;
+    _id?: unknown;
+  } | null;
+  children?: Array<{ author?: { image?: unknown } | null }>;
+  likes?: unknown[];
+  reposts?: unknown[];
+}): FeedPost => {
+  const author = post.author ?? null;
+  const community = post.community ?? null;
+
+  const serializedAuthor: FeedPostAuthor = {
+    id: toIdString(author?.id) || toIdString(author?._id),
+    name: typeof author?.name === "string" ? author.name : "Unknown",
+    image: typeof author?.image === "string" ? author.image : "",
+  };
+
+  const serializedCommunity: FeedPostCommunity = community
+    ? {
+        id: toIdString(community.id) || toIdString(community._id),
+        name: typeof community.name === "string" ? community.name : "",
+        image: typeof community.image === "string" ? community.image : "",
+      }
+    : null;
+
+  return {
+    _id: toIdString(post._id),
+    parentId: toIdString(post.parentId) || null,
+    text: typeof post.text === "string" ? post.text : "",
+    createdAt: toIsoDateString(post.createdAt),
+    author: serializedAuthor,
+    community: serializedCommunity,
+    children: Array.isArray(post.children)
+      ? post.children.map((child) => ({
+          author: {
+            image:
+              typeof child?.author?.image === "string"
+                ? child.author.image
+                : "",
+          },
+        }))
+      : [],
+    likes: Array.isArray(post.likes)
+      ? post.likes.map((value) => String(value))
+      : [],
+    reposts: Array.isArray(post.reposts)
+      ? post.reposts.map((value) => String(value))
+      : [],
+  };
 };
 
 export async function fetchPosts(pageNumber = 1, pageSize = 20) {
@@ -58,6 +173,87 @@ export async function fetchPosts(pageNumber = 1, pageSize = 20) {
   const isNext = totalPostsCount > skipAmount + posts.length;
 
   return { posts, isNext };
+}
+
+export async function fetchPostsCursor({
+  pageSize = 10,
+  cursor,
+}: {
+  pageSize?: number;
+  cursor?: string;
+}) {
+  await connectToDB();
+
+  const normalizedPageSize = Number.isFinite(pageSize) && pageSize > 0 ? pageSize : 10;
+  const query: {
+    parentId: { $in: Array<null | undefined> };
+    _id?: { $lt: mongoose.Types.ObjectId };
+  } = {
+    parentId: { $in: [null, undefined] },
+  };
+
+  if (cursor && mongoose.Types.ObjectId.isValid(cursor)) {
+    query._id = { $lt: new mongoose.Types.ObjectId(cursor) };
+  }
+
+  const posts = await Thread.find(query)
+    .sort({ _id: -1 })
+    .limit(normalizedPageSize + 1)
+    .populate({
+      path: "author",
+      model: User,
+      select: "_id id name username image",
+    })
+    .populate({
+      path: "community",
+      model: Community,
+      select: "_id id name image",
+    })
+    .populate({
+      path: "children",
+      populate: {
+        path: "author",
+        model: User,
+        select: "_id name parentId image",
+      },
+    })
+    .lean();
+
+  const hasNext = posts.length > normalizedPageSize;
+  const visiblePosts = hasNext ? posts.slice(0, normalizedPageSize) : posts;
+  const serializedPosts = visiblePosts.map((post) =>
+    serializeFeedPost(post as {
+      _id?: unknown;
+      parentId?: unknown;
+      text?: unknown;
+      createdAt?: unknown;
+      author?: {
+        id?: unknown;
+        name?: unknown;
+        image?: unknown;
+        _id?: unknown;
+      } | null;
+      community?: {
+        id?: unknown;
+        name?: unknown;
+        image?: unknown;
+        _id?: unknown;
+      } | null;
+      children?: Array<{ author?: { image?: unknown } | null }>;
+      likes?: unknown[];
+      reposts?: unknown[];
+    })
+  );
+  const nextCursor =
+    hasNext && visiblePosts.length
+      ? toIdString(visiblePosts[visiblePosts.length - 1]?._id)
+      : null;
+
+  return {
+    posts: serializedPosts,
+    nextCursor,
+    hasNext,
+  };
 }
 
 interface Params {
