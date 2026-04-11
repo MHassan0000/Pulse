@@ -13,6 +13,40 @@ import { ThreadMediaValidation } from "../validations/thread";
 const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "Unknown error";
 
+const resolveUploadThingAppId = () => {
+  const publicAppId = process.env.NEXT_PUBLIC_UPLOADTHING_APP_ID;
+  if (typeof publicAppId === "string" && publicAppId.trim()) {
+    return publicAppId.trim();
+  }
+
+  const rawToken = process.env.UPLOADTHING_TOKEN;
+  if (typeof rawToken !== "string" || !rawToken.trim()) {
+    return "";
+  }
+
+  const normalizedToken = rawToken.trim().replace(/^['"]|['"]$/g, "");
+
+  try {
+    const decoded = Buffer.from(normalizedToken, "base64").toString("utf8");
+    const parsed = JSON.parse(decoded) as { appId?: unknown };
+    return typeof parsed.appId === "string" ? parsed.appId : "";
+  } catch {
+    return "";
+  }
+};
+
+const UPLOADTHING_APP_ID = resolveUploadThingAppId();
+
+const toUploadThingCdnUrl = (providerKey: string, fallbackUrl: string) => {
+  const normalizedKey = providerKey.trim();
+
+  if (UPLOADTHING_APP_ID && normalizedKey) {
+    return `https://${UPLOADTHING_APP_ID}.ufs.sh/f/${normalizedKey}`;
+  }
+
+  return fallbackUrl;
+};
+
 type DescendantThread = {
   _id: unknown;
   author?: { _id?: unknown } | null;
@@ -130,13 +164,15 @@ const toIsoDateString = (value: unknown) => {
 
 const serializeMediaItem = (item: RawMediaInput): ThreadMedia | null => {
   const kind = item.kind === "video" ? "video" : item.kind === "image" ? "image" : null;
-  const url = typeof item.url === "string" ? item.url : "";
+  const fallbackUrl = typeof item.url === "string" ? item.url : "";
   const mimeType = typeof item.mimeType === "string" ? item.mimeType : "";
   const size = typeof item.size === "number" ? item.size : Number(item.size ?? 0);
   const width = typeof item.width === "number" ? item.width : null;
   const height = typeof item.height === "number" ? item.height : null;
   const durationSec = typeof item.durationSec === "number" ? item.durationSec : null;
-  const providerKey = typeof item.providerKey === "string" ? item.providerKey : "";
+  const providerKey =
+    typeof item.providerKey === "string" ? item.providerKey.trim() : "";
+  const url = toUploadThingCdnUrl(providerKey, fallbackUrl);
 
   if (!kind || !url || !mimeType || !Number.isFinite(size) || size <= 0 || !providerKey) {
     return null;

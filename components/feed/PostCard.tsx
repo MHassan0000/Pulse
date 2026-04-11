@@ -89,6 +89,24 @@ const buildMediaSrcCandidates = (item: PostMedia) => {
     candidates.push(normalized);
   };
 
+  const withAmbiguousVariants = (value: string) => {
+    const normalized = value.trim();
+    if (!normalized) return [] as string[];
+
+    return Array.from(
+      new Set([
+        normalized,
+        normalized.replace(/I/g, "l"),
+        normalized.replace(/l/g, "I"),
+      ])
+    );
+  };
+
+  const publicAppId =
+    typeof process.env.NEXT_PUBLIC_UPLOADTHING_APP_ID === "string"
+      ? process.env.NEXT_PUBLIC_UPLOADTHING_APP_ID.trim()
+      : "";
+
   let appIdFromUrl = "";
   try {
     const parsed = new URL(item.url);
@@ -104,25 +122,23 @@ const buildMediaSrcCandidates = (item: PostMedia) => {
   }
 
   const keyFromUrl = item.url.match(/\/f\/([^/?#]+)/)?.[1] ?? "";
-  const providerKey = item.providerKey?.trim() || keyFromUrl;
+  const providerKey = item.providerKey?.trim() || "";
+  const resolvedAppId = appIdFromUrl || publicAppId;
 
-  if (appIdFromUrl && providerKey) {
-    pushCandidate(`https://${appIdFromUrl}.ufs.sh/f/${providerKey}`);
+  const keyCandidates = Array.from(
+    new Set([
+      ...withAmbiguousVariants(providerKey),
+      ...withAmbiguousVariants(keyFromUrl),
+    ])
+  );
+
+  if (resolvedAppId) {
+    for (const key of keyCandidates) {
+      pushCandidate(`https://${resolvedAppId}.ufs.sh/f/${key}`);
+    }
   }
 
   pushCandidate(item.url);
-
-  if (providerKey) {
-    if (appIdFromUrl) {
-      pushCandidate(`https://${appIdFromUrl}.ufs.sh/f/${providerKey.replace(/I/g, "l")}`);
-      pushCandidate(`https://${appIdFromUrl}.ufs.sh/f/${providerKey.replace(/l/g, "I")}`);
-    }
-
-    pushCandidate(`https://utfs.io/f/${providerKey}`);
-    pushCandidate(`https://ufs.sh/f/${providerKey}`);
-    pushCandidate(`https://utfs.io/f/${providerKey.replace(/I/g, "l")}`);
-    pushCandidate(`https://utfs.io/f/${providerKey.replace(/l/g, "I")}`);
-  }
 
   return candidates;
 };
@@ -159,6 +175,7 @@ const PostMediaImage = ({ item, singleMedia }: { item: PostMedia; singleMedia: b
             src={src}
             alt="Thread media"
             fill
+            unoptimized
             sizes={
               singleMedia
                 ? "(max-width: 768px) calc(100vw - 4rem), (max-width: 1200px) 86vw, 920px"
@@ -242,6 +259,13 @@ const PostCard = ({
   const handleDelete = async () => {
     if (!canDelete) return;
     await deleteThread(id, pathname, currentUserId);
+
+    if (!isComment && pathname.startsWith("/thread/")) {
+      router.replace("/");
+      return;
+    }
+
+    router.refresh();
   };
 
   const handleLike = () => {
@@ -391,41 +415,43 @@ const PostCard = ({
           </Link>
 
           {media.length ? (
-            <div
-              className={`mt-3 mx-auto grid w-full max-w-[920px] gap-2 ${
-                singleMedia ? "grid-cols-1 justify-items-center" : "grid-cols-1 sm:grid-cols-2"
-              }`}
-            >
-              {media.map((item, index) =>
-                item.kind === "image" ? (
-                  <PostMediaImage
-                    key={`${item.providerKey || item.url}-${index}`}
-                    item={item}
-                    singleMedia={singleMedia}
-                  />
-                ) : (
-                  <div
-                    key={`${item.providerKey || item.url}-${index}`}
-                    className={`w-full overflow-hidden rounded-2xl border border-zinc-200 bg-black dark:border-[#1f1f1f] ${
-                      singleMedia ? "col-span-full mx-auto max-w-[920px]" : ""
-                    }`}
-                  >
+            <div className="mt-3 sm:-ml-7 sm:w-[calc(100%+1.75rem)]">
+              <div
+                className={`mx-auto grid w-full max-w-[920px] gap-2 ${
+                  singleMedia ? "grid-cols-1 justify-items-center" : "grid-cols-1 sm:grid-cols-2"
+                }`}
+              >
+                {media.map((item, index) =>
+                  item.kind === "image" ? (
+                    <PostMediaImage
+                      key={`${item.providerKey || item.url}-${index}`}
+                      item={item}
+                      singleMedia={singleMedia}
+                    />
+                  ) : (
                     <div
-                      className={`relative w-full ${
-                        singleMedia ? "min-h-[260px] max-h-[760px]" : "min-h-[190px] max-h-[420px]"
+                      key={`${item.providerKey || item.url}-${index}`}
+                      className={`w-full overflow-hidden rounded-2xl border border-zinc-200 bg-black dark:border-[#1f1f1f] ${
+                        singleMedia ? "col-span-full mx-auto max-w-[920px]" : ""
                       }`}
-                      style={{ aspectRatio: String(getMediaAspectRatio(item)) }}
                     >
-                      <video
-                        src={item.url}
-                        controls
-                        preload="metadata"
-                        className="h-full w-full object-cover"
-                      />
+                      <div
+                        className={`relative w-full ${
+                          singleMedia ? "min-h-[260px] max-h-[760px]" : "min-h-[190px] max-h-[420px]"
+                        }`}
+                        style={{ aspectRatio: String(getMediaAspectRatio(item)) }}
+                      >
+                        <video
+                          src={item.url}
+                          controls
+                          preload="metadata"
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
                     </div>
-                  </div>
-                )
-              )}
+                  )
+                )}
+              </div>
             </div>
           ) : null}
 

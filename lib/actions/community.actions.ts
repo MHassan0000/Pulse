@@ -10,6 +10,40 @@ import User from "../models/user.model";
 import { connectToDB } from "../mongoose";
 import { ThreadMediaValidation } from "../validations/thread";
 
+const resolveUploadThingAppId = () => {
+  const publicAppId = process.env.NEXT_PUBLIC_UPLOADTHING_APP_ID;
+  if (typeof publicAppId === "string" && publicAppId.trim()) {
+    return publicAppId.trim();
+  }
+
+  const rawToken = process.env.UPLOADTHING_TOKEN;
+  if (typeof rawToken !== "string" || !rawToken.trim()) {
+    return "";
+  }
+
+  const normalizedToken = rawToken.trim().replace(/^['"]|['"]$/g, "");
+
+  try {
+    const decoded = Buffer.from(normalizedToken, "base64").toString("utf8");
+    const parsed = JSON.parse(decoded) as { appId?: unknown };
+    return typeof parsed.appId === "string" ? parsed.appId : "";
+  } catch {
+    return "";
+  }
+};
+
+const UPLOADTHING_APP_ID = resolveUploadThingAppId();
+
+const toUploadThingCdnUrl = (providerKey: string, fallbackUrl: string) => {
+  const normalizedKey = providerKey.trim();
+
+  if (UPLOADTHING_APP_ID && normalizedKey) {
+    return `https://${UPLOADTHING_APP_ID}.ufs.sh/f/${normalizedKey}`;
+  }
+
+  return fallbackUrl;
+};
+
 const sanitizeCommunityUsername = (value: string) =>
   value
     .toLowerCase()
@@ -68,7 +102,10 @@ const normalizeMediaList = (media: unknown): ThreadMedia[] => {
 
       return {
         kind,
-        url: typeof mediaItem.url === "string" ? mediaItem.url : "",
+        url: toUploadThingCdnUrl(
+          typeof mediaItem.providerKey === "string" ? mediaItem.providerKey : "",
+          typeof mediaItem.url === "string" ? mediaItem.url : ""
+        ),
         mimeType:
           typeof mediaItem.mimeType === "string" ? mediaItem.mimeType : "",
         size:
@@ -83,7 +120,7 @@ const normalizeMediaList = (media: unknown): ThreadMedia[] => {
             : null,
         providerKey:
           typeof mediaItem.providerKey === "string"
-            ? mediaItem.providerKey
+            ? mediaItem.providerKey.trim()
             : "",
       };
     })

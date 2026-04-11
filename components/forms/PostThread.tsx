@@ -229,7 +229,7 @@ const PostThread = ({ userId }: Props) => {
                       height={isExpanded ? 320 : 220}
                       visibleDragbar={false}
                       commands={editorCommands}
-                       previewOptions={{ disallowedElements: ["img", "video", "source"] }}
+                      previewOptions={{ disallowedElements: ["img", "video", "source"] }}
                       textareaProps={{
                         placeholder:
                           "Share a thought, ask a question, or start a thread...",
@@ -271,8 +271,8 @@ const PostThread = ({ userId }: Props) => {
               <button
                 type="button"
                 className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition-all duration-200 ${isExpanded
-                    ? "border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-black"
-                    : "border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-100 dark:border-[#1f1f1f] dark:bg-black dark:text-zinc-300 dark:hover:bg-zinc-900"
+                  ? "border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-black"
+                  : "border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-100 dark:border-[#1f1f1f] dark:bg-black dark:text-zinc-300 dark:hover:bg-zinc-900"
                   }`}
                 onClick={() => setIsExpanded((prev) => !prev)}
               >
@@ -326,7 +326,7 @@ const PostThread = ({ userId }: Props) => {
         <Button
           type="submit"
           disabled={isSubmitting || isUploading}
-          className="w-full rounded-2xl bg-zinc-900 py-3 text-sm font-semibold text-white transition-all duration-200 hover:bg-black dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+          className="w-full rounded-2xl bg-zinc-900 py-3 text-sm font-semibold text-white transition-all duration-200 hover:bg-black dark:bg-white dark:text-black dark:hover:bg-zinc-200 cursor-pointer"
         >
           {isSubmitting ? "Posting..." : "Post Thread"}
         </Button>

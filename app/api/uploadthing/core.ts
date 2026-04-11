@@ -43,9 +43,9 @@ export const ourFileRouter = {
       const isImage = file.type.startsWith("image/");
       const isVideo = file.type.startsWith("video/");
       const resolvedUrl =
-        typeof file.appUrl === "string" && file.appUrl.trim().length > 0
-          ? file.appUrl
-          : file.ufsUrl;
+        typeof file.ufsUrl === "string" && file.ufsUrl.trim().length > 0
+          ? file.ufsUrl
+          : file.appUrl;
 
       if (!isImage && !isVideo) {
         throw new UploadThingError("Unsupported file type");
