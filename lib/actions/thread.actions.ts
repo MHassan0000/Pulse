@@ -48,6 +48,26 @@ type FeedPost = {
   reposts: string[];
 };
 
+type ThreadDetailNode = {
+  _id: string;
+  parentId: string | null;
+  text: string;
+  createdAt: string;
+  author: {
+    id: string;
+    name: string;
+    image: string;
+  };
+  community: {
+    id: string;
+    name: string;
+    image: string;
+  } | null;
+  children: ThreadDetailNode[];
+  likes: string[];
+  reposts: string[];
+};
+
 const toIdString = (value: unknown) => {
   if (typeof value === "string") return value;
   if (typeof value === "number") return String(value);
@@ -132,48 +152,82 @@ const serializeFeedPost = (post: {
   };
 };
 
-export async function fetchPosts(pageNumber = 1, pageSize = 20) {
-  await connectToDB();
+const serializeThreadDetailNode = (node: {
+  _id?: unknown;
+  parentId?: unknown;
+  text?: unknown;
+  createdAt?: unknown;
+  author?: {
+    id?: unknown;
+    name?: unknown;
+    image?: unknown;
+    _id?: unknown;
+  } | null;
+  community?: {
+    id?: unknown;
+    name?: unknown;
+    image?: unknown;
+    _id?: unknown;
+  } | null;
+  children?: Array<unknown>;
+  likes?: unknown[];
+  reposts?: unknown[];
+}): ThreadDetailNode => {
+  const author = node.author ?? null;
+  const community = node.community ?? null;
 
-  // Calculate the number of posts to skip based on the page number and page size.
-  const skipAmount = (pageNumber - 1) * pageSize;
-
-  // Create a query to fetch the posts that have no parent (top-level threads) (a thread that is not a comment/reply).
-  const postsQuery = Thread.find({ parentId: { $in: [null, undefined] } })
-    .sort({ createdAt: "desc" })
-    .skip(skipAmount)
-    .limit(pageSize)
-    .populate({
-      path: "author",
-      model: User,
-      select: "_id id name username image",
-    })
-    .populate({
-      path: "community",
-      model: Community,
-      select: "_id id name image",
-    })
-    .populate({
-      path: "children", // Populate the children field
-      populate: {
-        path: "author", // Populate the author field within children
-        model: User,
-        select: "_id name parentId image", // Select only _id and username fields of the author
-      },
-    })
-    .lean();
-
-  // Count the total number of top-level posts (threads) i.e., threads that are not comments.
-  const totalPostsCount = await Thread.countDocuments({
-    parentId: { $in: [null, undefined] },
-  }); // Get the total count of posts
-
-  const posts = await postsQuery.exec();
-
-  const isNext = totalPostsCount > skipAmount + posts.length;
-
-  return { posts, isNext };
-}
+  return {
+    _id: toIdString(node._id),
+    parentId: toIdString(node.parentId) || null,
+    text: typeof node.text === "string" ? node.text : "",
+    createdAt: toIsoDateString(node.createdAt),
+    author: {
+      id: toIdString(author?.id) || toIdString(author?._id),
+      name: typeof author?.name === "string" ? author.name : "Unknown",
+      image: typeof author?.image === "string" ? author.image : "",
+    },
+    community: community
+      ? {
+          id: toIdString(community.id) || toIdString(community._id),
+          name: typeof community.name === "string" ? community.name : "",
+          image: typeof community.image === "string" ? community.image : "",
+        }
+      : null,
+    children: Array.isArray(node.children)
+      ? node.children.map((child) =>
+          serializeThreadDetailNode(
+            child as {
+              _id?: unknown;
+              parentId?: unknown;
+              text?: unknown;
+              createdAt?: unknown;
+              author?: {
+                id?: unknown;
+                name?: unknown;
+                image?: unknown;
+                _id?: unknown;
+              } | null;
+              community?: {
+                id?: unknown;
+                name?: unknown;
+                image?: unknown;
+                _id?: unknown;
+              } | null;
+              children?: Array<unknown>;
+              likes?: unknown[];
+              reposts?: unknown[];
+            }
+          )
+        )
+      : [],
+    likes: Array.isArray(node.likes)
+      ? node.likes.map((value) => String(value))
+      : [],
+    reposts: Array.isArray(node.reposts)
+      ? node.reposts.map((value) => String(value))
+      : [],
+  };
+};
 
 export async function fetchPostsCursor({
   pageSize = 10,
@@ -184,7 +238,9 @@ export async function fetchPostsCursor({
 }) {
   await connectToDB();
 
-  const normalizedPageSize = Number.isFinite(pageSize) && pageSize > 0 ? pageSize : 10;
+  const normalizedPageSize = Number.isFinite(pageSize) && pageSize > 0
+    ? Math.min(pageSize, 25)
+    : 10;
   const query: {
     parentId: { $in: Array<null | undefined> };
     _id?: { $lt: mongoose.Types.ObjectId };
@@ -456,10 +512,33 @@ export async function fetchThreadById(threadId: string) {
       .lean()
       .exec();
 
-    return thread;
+    if (!thread) return null;
+
+    return serializeThreadDetailNode(
+      thread as {
+        _id?: unknown;
+        parentId?: unknown;
+        text?: unknown;
+        createdAt?: unknown;
+        author?: {
+          id?: unknown;
+          name?: unknown;
+          image?: unknown;
+          _id?: unknown;
+        } | null;
+        community?: {
+          id?: unknown;
+          name?: unknown;
+          image?: unknown;
+          _id?: unknown;
+        } | null;
+        children?: Array<unknown>;
+        likes?: unknown[];
+        reposts?: unknown[];
+      }
+    );
   } catch (err) {
-    console.error("Error while fetching thread:", err);
-    throw new Error("Unable to fetch thread");
+    throw new Error(`Unable to fetch thread: ${getErrorMessage(err)}`);
   }
 }
 
@@ -507,8 +586,7 @@ export async function addCommentToThread(
 
     revalidatePath(path);
   } catch (err) {
-    console.error("Error while adding comment:", err);
-    throw new Error("Unable to add comment");
+    throw new Error(`Unable to add comment: ${getErrorMessage(err)}`);
   }
 }
 

@@ -50,9 +50,7 @@ type ClerkUserData = {
 const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "Unknown error";
 
-const logWebhookError = (eventType: string, error: unknown) => {
-  console.error(`[clerk-webhook:${eventType}] ${getErrorMessage(error)}`);
-};
+const logWebhookError = (_eventType: string, _error: unknown) => {};
 
 const isDatabaseConnectionError = (error: unknown) => {
   const message = getErrorMessage(error).toLowerCase();
@@ -387,9 +385,8 @@ export const POST = async (request: Request) => {
     await connectToDB();
   } catch (error) {
     logWebhookError(eventType, error);
-    const detail = getErrorMessage(error);
     return NextResponse.json(
-      { message: "Database connection failed", detail },
+      { message: "Database connection failed" },
       { status: 503 }
     );
   }

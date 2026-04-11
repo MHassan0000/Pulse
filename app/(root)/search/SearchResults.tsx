@@ -46,7 +46,14 @@ const SearchResults = async ({
         )}
       </div>
 
-      <Pagination path="search" pageNumber={pageNumber} isNext={result.isNext} />
+      <Pagination
+        path="search"
+        pageNumber={pageNumber}
+        isNext={result.isNext}
+        tabKey="q"
+        tabValue={trimmedQuery}
+        preserveQueryKeys={["q"]}
+      />
     </>
   );
 };

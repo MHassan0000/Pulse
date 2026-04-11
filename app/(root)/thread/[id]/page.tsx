@@ -17,18 +17,22 @@ type ThreadChild = {
     name?: string;
     image?: string;
     id?: string;
-    _id?: { toString?: () => string };
   };
   community?: {
     id?: string;
     name?: string;
     image?: string;
-    _id?: { toString?: () => string };
   } | null;
   createdAt?: string | Date;
   children?: Array<{ author?: { image?: string } }>;
   likes?: unknown[];
   reposts?: unknown[];
+};
+
+const toSafeIsoString = (value: unknown) => {
+  if (!value) return "";
+  const date = new Date(value as string | number | Date);
+  return Number.isNaN(date.getTime()) ? "" : date.toISOString();
 };
 
 async function Page({
@@ -76,17 +80,17 @@ async function Page({
     author: {
       name: threadAuthor.name ?? "Unknown",
       image: threadAuthor.image ?? "",
-      id: threadAuthor.id ?? threadAuthor._id?.toString?.() ?? "",
+      id: threadAuthor.id ?? "",
     },
     community: threadCommunity
       ? {
-          id: threadCommunity.id ?? threadCommunity._id?.toString?.() ?? "",
+          id: threadCommunity.id ?? "",
           name: threadCommunity.name ?? "",
           image: threadCommunity.image ?? "",
         }
       : null,
     createdAt: thread.createdAt
-      ? new Date(thread.createdAt).toISOString()
+      ? toSafeIsoString(thread.createdAt)
       : "",
     comments: Array.isArray(thread.children)
       ? thread.children.map((child: ThreadChild) => ({
@@ -152,15 +156,12 @@ async function Page({
                 author={{
                   name: childAuthor.name ?? "Unknown",
                   image: childAuthor.image ?? "",
-                  id: childAuthor.id ?? childAuthor._id?.toString?.() ?? "",
+                  id: childAuthor.id ?? "",
                 }}
                 community={
                   childCommunity
                     ? {
-                        id:
-                          childCommunity.id ??
-                          childCommunity._id?.toString?.() ??
-                          "",
+                        id: childCommunity.id ?? "",
                         name: childCommunity.name ?? "",
                         image: childCommunity.image ?? "",
                       }
@@ -168,7 +169,7 @@ async function Page({
                 }
                 createdAt={
                   childItem.createdAt
-                    ? new Date(childItem.createdAt).toISOString()
+                    ? toSafeIsoString(childItem.createdAt)
                     : ""
                 }
                 comments={

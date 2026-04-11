@@ -69,7 +69,7 @@ async function Page({
                         username={community.username}
                         imgUrl={community.image}
                         bio={community.bio}
-                        members={community.members}
+                        membersCount={community.membersCount}
                       />
                     ))
                   )}
@@ -79,6 +79,9 @@ async function Page({
                   path="communities"
                   pageNumber={normalizedPageNumber}
                   isNext={result.isNext}
+                  tabKey="q"
+                  tabValue={query}
+                  preserveQueryKeys={["q"]}
                 />
               </>
             ) : null}

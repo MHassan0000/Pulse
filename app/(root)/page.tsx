@@ -21,9 +21,8 @@ export default async function Home({ searchParams }: HomeProps) {
     if (userId) {
       try {
         userInfo = await fetchUser(userId);
-      } catch (error) {
+      } catch {
         userLookupFailed = true;
-        console.error("Home user lookup failed:", error);
       }
 
       if (!userInfo && !userLookupFailed) {
@@ -42,9 +41,8 @@ export default async function Home({ searchParams }: HomeProps) {
             });
 
             userInfo = await fetchUser(userId);
-          } catch (error) {
+          } catch {
             userLookupFailed = true;
-            console.error("Home user bootstrap failed:", error);
           }
         }
       }
@@ -90,8 +88,6 @@ export default async function Home({ searchParams }: HomeProps) {
     );
   } catch (error) {
     unstable_rethrow(error);
-    const message = error instanceof Error ? error.message : "Unknown";
-    console.error("Home render failed:", message);
     return (
       <section className="page-scroll h-full overflow-y-auto pb-24">
         <div className="mx-auto flex w-full max-w-3xl flex-col">

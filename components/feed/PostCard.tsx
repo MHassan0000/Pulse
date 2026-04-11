@@ -27,6 +27,7 @@ import { useOptimistic, useTransition } from "react";
 
 type PostCardProps = {
   id: string;
+  threadLinkId?: string;
   currentUserId: string;
   parentId: string | null;
   content: string;
@@ -53,6 +54,7 @@ type PostCardProps = {
 
 const PostCard = ({
   id,
+  threadLinkId,
   author,
   currentUserId,
   community,
@@ -91,13 +93,20 @@ const PostCard = ({
   };
 
   const formattedDate = createdAt
-    ? new Date(createdAt).toISOString().slice(0, 16).replace("T", " ")
+    ? (() => {
+        const date = new Date(createdAt);
+        return Number.isNaN(date.getTime())
+          ? ""
+          : date.toISOString().slice(0, 16).replace("T", " ");
+      })()
     : "";
 
   const likedByCurrentUser = optimisticLikes.includes(currentUserId);
   const repostedByCurrentUser = optimisticReposts.includes(currentUserId);
 
   const canDelete = currentUserId === author.id;
+  const targetThreadId = threadLinkId || id;
+
   const handleDelete = async () => {
     if (!canDelete) return;
     await deleteThread(id, pathname, currentUserId);
@@ -204,7 +213,7 @@ const PostCard = ({
             ) : null}
           </div>
           <Link
-            href={`/thread/${id}`}
+            href={`/thread/${targetThreadId}`}
             className="mt-2 block rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-zinc-300 dark:focus-visible:ring-zinc-700"
           >
             <div className="text-sm text-zinc-700 transition-colors duration-200 hover:text-zinc-900 dark:text-zinc-200 dark:hover:text-white">

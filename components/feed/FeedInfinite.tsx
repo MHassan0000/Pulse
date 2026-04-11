@@ -57,7 +57,12 @@ type FeedInfiniteProps = {
 const normalizePost = (post: RawPost): NormalizedPost => {
   const author = post.author ?? {};
   const community = post.community ?? null;
-  const createdAt = post.createdAt ? new Date(post.createdAt).toISOString() : "";
+  const createdAt = post.createdAt
+    ? (() => {
+        const date = new Date(post.createdAt);
+        return Number.isNaN(date.getTime()) ? "" : date.toISOString();
+      })()
+    : "";
   const postId = post._id ? String(post._id) : post.id ? String(post.id) : "";
 
   return {
@@ -138,7 +143,9 @@ const FeedInfinite = ({
       };
 
       const incoming = Array.isArray(data.posts) ? data.posts.map(normalizePost) : [];
-      const filteredIncoming = incoming.filter((post) => !uniquePostIds.has(post.id));
+      const filteredIncoming = incoming.filter(
+        (post) => post.id && !uniquePostIds.has(post.id)
+      );
 
       setPosts((prev) => [...prev, ...filteredIncoming]);
       setNextCursor(data.nextCursor ?? null);

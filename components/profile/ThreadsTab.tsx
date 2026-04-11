@@ -68,6 +68,12 @@ const toIdString = (value: unknown) => {
   return "";
 };
 
+const toSafeIsoString = (value: string | Date | undefined) => {
+  if (!value) return "";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "" : date.toISOString();
+};
+
 type RawResult = {
   name?: string;
   image?: string;
@@ -140,7 +146,7 @@ async function ThreadsTab({
           }
         : null,
       createdAt: thread.createdAt
-        ? new Date(thread.createdAt).toISOString()
+        ? toSafeIsoString(thread.createdAt)
         : "",
       children: (thread.children ?? []).map((child) => ({
         author: {
@@ -184,6 +190,11 @@ async function ThreadsTab({
           >
             <PostCard
               id={thread._id}
+              threadLinkId={
+                mode === "replies" && thread.parentId
+                  ? thread.parentId
+                  : thread._id
+              }
               currentUserId={currentUserId}
               parentId={thread.parentId}
               content={thread.text}

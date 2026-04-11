@@ -24,6 +24,13 @@ type ActivityRecord = {
   createdAt?: string | Date;
 };
 
+const toDisplayDate = (value: string | Date | undefined) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toISOString().slice(0, 16).replace("T", " ");
+};
+
 async function Page({
   searchParams,
 }: {
@@ -85,9 +92,7 @@ async function Page({
                         : null
                     }
                     createdAt={
-                      item.createdAt
-                        ? new Date(item.createdAt).toISOString().slice(0, 16).replace("T", " ")
-                        : ""
+                      toDisplayDate(item.createdAt)
                     }
                   />
                 ))
@@ -102,6 +107,7 @@ async function Page({
               path="activity"
               pageNumber={normalizedPageNumber}
               isNext={isNext}
+              preserveQueryKeys={["page"]}
             />
           </div>
         </div>

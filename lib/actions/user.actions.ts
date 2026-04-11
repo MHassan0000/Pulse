@@ -239,10 +239,9 @@ export async function fetchUser(userId: string) {
   try {
     await connectToDB();
 
-    return await User.findOne(resolveUserQuery(userId)).populate({
-      path: "communities",
-      model: Community,
-    });
+    return await User.findOne(resolveUserQuery(userId))
+      .select("id username name image bio onboarded")
+      .lean();
   } catch (error: unknown) {
     throw new Error(`Failed to fetch user: ${getErrorMessage(error)}`);
   }
@@ -353,7 +352,6 @@ export async function fetchUserPosts(
       totalCount,
     };
   } catch (error) {
-    console.error("Error fetching user threads:", error);
     throw error;
   }
 }
@@ -443,7 +441,6 @@ export async function fetchUserRepliesReceived(
       totalCount,
     };
   } catch (error) {
-    console.error("Error fetching received replies:", error);
     throw error;
   }
 }
@@ -476,7 +473,6 @@ export async function fetchUserStats(userId: string) {
 
     return { threadCount, replyCount };
   } catch (error) {
-    console.error("Error fetching user stats:", error);
     throw error;
   }
 }
@@ -498,8 +494,11 @@ export async function fetchUsers({
   try {
     await connectToDB();
 
+    const normalizedPageNumber = Number.isFinite(pageNumber) && pageNumber > 0 ? pageNumber : 1;
+    const normalizedPageSize = Number.isFinite(pageSize) && pageSize > 0 ? pageSize : 20;
+
     // Calculate the number of users to skip based on the page number and page size.
-    const skipAmount = (pageNumber - 1) * pageSize;
+    const skipAmount = (normalizedPageNumber - 1) * normalizedPageSize;
 
     // Create a case-insensitive regular expression for the provided search string.
     const regex = new RegExp(searchString, "i");
@@ -517,30 +516,38 @@ export async function fetchUsers({
       ];
     }
 
-    // Define the sort options for the fetched users based on createdAt field and provided sort order.
-    const sortOptions = { createdAt: sortBy };
+    // Define the sort options for the fetched users.
+    const sortOptions = { _id: sortBy };
 
     const usersQuery = User.find(query)
+      .select("id name username image")
       .sort(sortOptions)
       .skip(skipAmount)
-      .limit(pageSize);
+      .limit(normalizedPageSize)
+      .lean();
 
     // Count the total number of users that match the search criteria (without pagination).
     const totalUsersCount = await User.countDocuments(query);
 
-    const users = await usersQuery.exec();
+    const rawUsers = await usersQuery.exec();
+
+    const users = rawUsers.map((user) => ({
+      id: typeof user.id === "string" ? user.id : toIdString(user.id),
+      name: typeof user.name === "string" ? user.name : "",
+      username: typeof user.username === "string" ? user.username : "",
+      image: typeof user.image === "string" ? user.image : "",
+    }));
 
     // Check if there are more users beyond the current page.
     const isNext = totalUsersCount > skipAmount + users.length;
 
     return { users, isNext };
   } catch (error) {
-    console.error("Error fetching users:", error);
     throw error;
   }
 }
 
-export async function getActivity(
+async function getActivity(
   userId: string,
   {
     sourceLimit = 160,
@@ -831,7 +838,6 @@ export async function getActivity(
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
   } catch (error) {
-    console.error("Error fetching replies: ", error);
     throw error;
   }
 }

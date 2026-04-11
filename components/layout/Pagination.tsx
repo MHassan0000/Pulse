@@ -14,6 +14,9 @@ interface Props {
   preserveQueryKeys?: string[];
 }
 
+const isNonEmptyString = (value: unknown): value is string =>
+  typeof value === "string" && value.trim().length > 0;
+
 function Pagination({
   pageNumber,
   isNext,
@@ -50,7 +53,7 @@ function Pagination({
       });
     }
 
-    if (tabKey && tabValue) {
+    if (isNonEmptyString(tabKey) && isNonEmptyString(tabValue)) {
       params.set(tabKey, tabValue);
     }
 

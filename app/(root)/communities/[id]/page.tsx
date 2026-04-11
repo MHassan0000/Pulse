@@ -10,7 +10,10 @@ import CommunityActions from "@/components/community/CommunityActions";
 import MemberRow from "@/components/community/MemberRow";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import { fetchCommunityDetails } from "@/lib/actions/community.actions";
+import {
+  fetchCommunityDetails,
+  fetchCommunityMembersPaginated,
+} from "@/lib/actions/community.actions";
 
 export const dynamic = "force-dynamic";
 
@@ -32,13 +35,14 @@ type CommunityDetailsShape = {
   image: string;
   bio: string;
   threadCount?: number;
+  memberCount?: number;
   createdBy?: { id?: string };
-  members?: Array<CommunityMember | { id?: unknown; name?: unknown; username?: unknown; image?: unknown }>;
 };
 
 type CommunitySearchParams = {
   tab?: string;
   threadsPage?: string;
+  membersPage?: string;
 };
 
 const resolvePositivePage = (value: string | undefined) => {
@@ -65,16 +69,14 @@ async function Page({
 
     const currentUserAppId = safeText(user.id);
     const ownerUserId = safeText(communityDetails.createdBy?.id);
-    const normalizedMembers: CommunityMember[] = (communityDetails.members ?? []).map((member) => ({
-      id: safeText(member?.id),
-      name: safeText(member?.name),
-      username: safeText(member?.username),
-      image: safeText(member?.image),
-    }));
     const communityThreadAccountId = safeText(communityDetails.id);
     const threadCount =
       typeof communityDetails.threadCount === "number"
         ? communityDetails.threadCount
+        : 0;
+    const memberCount =
+      typeof communityDetails.memberCount === "number"
+        ? communityDetails.memberCount
         : 0;
 
     if (!communityThreadAccountId) {
@@ -89,6 +91,7 @@ async function Page({
         ? resolvedSearchParams.tab
         : "threads";
     const threadsPage = resolvePositivePage(resolvedSearchParams?.threadsPage);
+    const membersPage = resolvePositivePage(resolvedSearchParams?.membersPage);
 
     const tabHref = (tabValue: "threads" | "members" | "requests") => {
       const paramsValue = new URLSearchParams();
@@ -98,8 +101,16 @@ async function Page({
         paramsValue.set("threadsPage", String(threadsPage));
       }
 
+      if (tabValue === "members" && membersPage > 1) {
+        paramsValue.set("membersPage", String(membersPage));
+      }
+
       if (tabValue !== "threads" && threadsPage > 1) {
         paramsValue.set("threadsPage", String(threadsPage));
+      }
+
+      if (tabValue !== "members" && membersPage > 1) {
+        paramsValue.set("membersPage", String(membersPage));
       }
 
       const query = paramsValue.toString();
@@ -117,6 +128,21 @@ async function Page({
             pageSize: 10,
           })
         : null;
+
+    const membersResult =
+      activeTab === "members"
+        ? await fetchCommunityMembersPaginated(communityThreadAccountId, {
+            pageNumber: membersPage,
+            pageSize: 20,
+          })
+        : null;
+
+    const normalizedMembers: CommunityMember[] = (membersResult?.members ?? []).map((member) => ({
+      id: safeText(member?.id),
+      name: safeText(member?.name),
+      username: safeText(member?.username),
+      image: safeText(member?.image),
+    }));
 
     return (
       <section className="page-scroll h-full overflow-y-auto pb-24">
@@ -163,6 +189,10 @@ async function Page({
                         <span className="ml-1 rounded-full bg-zinc-200 px-2 py-0.5 text-[10px] text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
                           {threadCount}
                         </span>
+                      ) : tab.label === "Members" ? (
+                        <span className="ml-1 rounded-full bg-zinc-200 px-2 py-0.5 text-[10px] text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                          {memberCount}
+                        </span>
                       ) : null}
                     </Link>
                   </TabsTrigger>
@@ -187,28 +217,41 @@ async function Page({
               </TabsContent>
 
               <TabsContent value="members" className="w-full">
-                <section className="mt-6 flex flex-col gap-4">
-                  {communityDetails.members?.length ? (
-                    normalizedMembers.map((member) => (
-                      <MemberRow
-                        key={member.id}
-                        member={member}
-                        communityId={communityThreadAccountId}
-                        currentUserId={currentUserAppId}
-                        ownerUserId={ownerUserId}
-                      />
-                    ))
-                  ) : (
-                    <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-6 py-12 text-center text-sm text-zinc-500 dark:border-[#1f1f1f] dark:bg-black dark:text-zinc-400">
-                      No members yet.
-                    </div>
-                  )}
-                </section>
+                {activeTab === "members" ? (
+                  <>
+                    <section className="mt-6 flex flex-col gap-4">
+                      {normalizedMembers.length ? (
+                        normalizedMembers.map((member) => (
+                          <MemberRow
+                            key={member.id}
+                            member={member}
+                            communityId={communityThreadAccountId}
+                            currentUserId={currentUserAppId}
+                            ownerUserId={ownerUserId}
+                          />
+                        ))
+                      ) : (
+                        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-6 py-12 text-center text-sm text-zinc-500 dark:border-[#1f1f1f] dark:bg-black dark:text-zinc-400">
+                          No members yet.
+                        </div>
+                      )}
+                    </section>
+
+                    <Pagination
+                      path={communityPathname}
+                      pageNumber={membersPage}
+                      isNext={Boolean(membersResult?.isNext)}
+                      queryKey="membersPage"
+                      tabKey="tab"
+                      tabValue="members"
+                      preserveQueryKeys={["tab", "threadsPage"]}
+                    />
+                  </>
+                ) : null}
               </TabsContent>
 
               <TabsContent value="requests" className="w-full">
                 <div className="mt-6 rounded-2xl border border-zinc-200 bg-zinc-50 px-6 py-12 text-center text-sm text-zinc-500 dark:border-[#1f1f1f] dark:bg-black dark:text-zinc-400">
-                  {/* TODO: integrate join request moderation workflow */}
                   Requests will be available soon.
                 </div>
               </TabsContent>

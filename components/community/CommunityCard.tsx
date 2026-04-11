@@ -7,7 +7,7 @@ type CommunityCardProps = {
   username: string;
   imgUrl: string;
   bio?: string;
-  members?: unknown[];
+  membersCount?: number;
 };
 
 const CommunityCard = ({
@@ -16,7 +16,7 @@ const CommunityCard = ({
   username,
   imgUrl,
   bio,
-  members = [],
+  membersCount = 0,
 }: CommunityCardProps) => {
   return (
     <Link
@@ -46,7 +46,7 @@ const CommunityCard = ({
       </p>
 
       <div className="flex items-center justify-between text-xs">
-        <span className="text-zinc-500">{members.length} members</span>
+        <span className="text-zinc-500">{membersCount} members</span>
         <span className="rounded-full border border-zinc-200 px-3 py-1 font-semibold text-zinc-600 transition-all duration-200 group-hover:bg-zinc-100 dark:border-[#2a2a2a] dark:text-zinc-300 dark:group-hover:bg-zinc-900">
           Open
         </span>
