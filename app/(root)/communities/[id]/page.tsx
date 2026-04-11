@@ -35,6 +35,7 @@ type CommunityDetailsShape = {
   image: string;
   bio: string;
   threadCount?: number;
+  mediaCount?: number;
   memberCount?: number;
   createdBy?: { id?: string };
 };
@@ -42,6 +43,7 @@ type CommunityDetailsShape = {
 type CommunitySearchParams = {
   tab?: string;
   threadsPage?: string;
+  mediaPage?: string;
   membersPage?: string;
 };
 
@@ -49,6 +51,13 @@ const resolvePositivePage = (value: string | undefined) => {
   const pageNumber = Number(value ?? 1);
   return Number.isFinite(pageNumber) && pageNumber > 0 ? pageNumber : 1;
 };
+
+const isRedirectError = (error: unknown) =>
+  typeof error === "object" &&
+  error !== null &&
+  "digest" in error &&
+  typeof (error as { digest?: unknown }).digest === "string" &&
+  (error as { digest: string }).digest.startsWith("NEXT_REDIRECT");
 
 async function Page({
   params,
@@ -78,6 +87,10 @@ async function Page({
       typeof communityDetails.memberCount === "number"
         ? communityDetails.memberCount
         : 0;
+    const mediaCount =
+      typeof communityDetails.mediaCount === "number"
+        ? communityDetails.mediaCount
+        : 0;
 
     if (!communityThreadAccountId) {
       redirect("/communities");
@@ -86,14 +99,16 @@ async function Page({
     const communityPathname = `/communities/${id}`;
     const activeTab =
       resolvedSearchParams?.tab === "threads" ||
+      resolvedSearchParams?.tab === "media" ||
       resolvedSearchParams?.tab === "members" ||
       resolvedSearchParams?.tab === "requests"
         ? resolvedSearchParams.tab
         : "threads";
     const threadsPage = resolvePositivePage(resolvedSearchParams?.threadsPage);
+    const mediaPage = resolvePositivePage(resolvedSearchParams?.mediaPage);
     const membersPage = resolvePositivePage(resolvedSearchParams?.membersPage);
 
-    const tabHref = (tabValue: "threads" | "members" | "requests") => {
+    const tabHref = (tabValue: "threads" | "media" | "members" | "requests") => {
       const paramsValue = new URLSearchParams();
       paramsValue.set("tab", tabValue);
 
@@ -105,12 +120,20 @@ async function Page({
         paramsValue.set("membersPage", String(membersPage));
       }
 
+      if (tabValue === "media" && mediaPage > 1) {
+        paramsValue.set("mediaPage", String(mediaPage));
+      }
+
       if (tabValue !== "threads" && threadsPage > 1) {
         paramsValue.set("threadsPage", String(threadsPage));
       }
 
       if (tabValue !== "members" && membersPage > 1) {
         paramsValue.set("membersPage", String(membersPage));
+      }
+
+      if (tabValue !== "media" && mediaPage > 1) {
+        paramsValue.set("mediaPage", String(mediaPage));
       }
 
       const query = paramsValue.toString();
@@ -125,6 +148,18 @@ async function Page({
             accountType: "Community",
             mode: "threads",
             pageNumber: threadsPage,
+            pageSize: 10,
+          })
+        : null;
+
+    const mediaTabResult =
+      activeTab === "media"
+        ? await ThreadsTab({
+            currentUserId: currentUserAppId,
+            accountId: communityThreadAccountId,
+            accountType: "Community",
+            mode: "media",
+            pageNumber: mediaPage,
             pageSize: 10,
           })
         : null;
@@ -182,12 +217,16 @@ async function Page({
                     className="rounded-xl px-4 py-2 text-xs"
                   >
                     <Link
-                      href={tabHref(tab.value as "threads" | "members" | "requests")}
+                      href={tabHref(tab.value as "threads" | "media" | "members" | "requests")}
                     >
                       <span>{tab.label}</span>
                       {tab.label === "Threads" ? (
                         <span className="ml-1 rounded-full bg-zinc-200 px-2 py-0.5 text-[10px] text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
                           {threadCount}
+                        </span>
+                      ) : tab.label === "Media" ? (
+                        <span className="ml-1 rounded-full bg-zinc-200 px-2 py-0.5 text-[10px] text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                          {mediaCount}
                         </span>
                       ) : tab.label === "Members" ? (
                         <span className="ml-1 rounded-full bg-zinc-200 px-2 py-0.5 text-[10px] text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
@@ -211,6 +250,23 @@ async function Page({
                       tabKey="tab"
                       tabValue="threads"
                       preserveQueryKeys={["tab"]}
+                    />
+                  </>
+                ) : null}
+              </TabsContent>
+
+              <TabsContent value="media" className="w-full">
+                {activeTab === "media" ? (
+                  <>
+                    {mediaTabResult?.content}
+                    <Pagination
+                      path={communityPathname}
+                      pageNumber={mediaPage}
+                      isNext={Boolean(mediaTabResult?.isNext)}
+                      queryKey="mediaPage"
+                      tabKey="tab"
+                      tabValue="media"
+                      preserveQueryKeys={["tab", "threadsPage", "membersPage"]}
                     />
                   </>
                 ) : null}
@@ -260,7 +316,11 @@ async function Page({
         </div>
       </section>
     );
-  } catch {
+  } catch (error) {
+    if (isRedirectError(error)) {
+      throw error;
+    }
+
     return (
       <section className="page-scroll h-full overflow-y-auto pb-24">
         <div className="mx-auto flex w-full max-w-4xl flex-col">

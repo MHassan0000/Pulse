@@ -8,6 +8,7 @@ import { connectToDB } from "../mongoose";
 import User from "../models/user.model";
 import Thread from "../models/thread.model";
 import Community from "../models/community.model";
+import { ThreadMediaValidation } from "../validations/thread";
 
 const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "Unknown error";
@@ -46,6 +47,44 @@ type FeedPost = {
   children: FeedPostChild[];
   likes: string[];
   reposts: string[];
+  media: ThreadMedia[];
+};
+
+type RawMediaInput = {
+  kind?: unknown;
+  url?: unknown;
+  mimeType?: unknown;
+  size?: unknown;
+  width?: unknown;
+  height?: unknown;
+  durationSec?: unknown;
+  providerKey?: unknown;
+};
+
+const MEDIA_MIME_BY_KIND: Record<"image" | "video", Set<string>> = {
+  image: new Set([
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "image/avif",
+  ]),
+  video: new Set([
+    "video/mp4",
+    "video/webm",
+    "video/quicktime",
+  ]),
+};
+
+type ThreadMedia = {
+  kind: "image" | "video";
+  url: string;
+  mimeType: string;
+  size: number;
+  width?: number | null;
+  height?: number | null;
+  durationSec?: number | null;
+  providerKey: string;
 };
 
 type ThreadDetailNode = {
@@ -66,6 +105,7 @@ type ThreadDetailNode = {
   children: ThreadDetailNode[];
   likes: string[];
   reposts: string[];
+  media: ThreadMedia[];
 };
 
 const toIdString = (value: unknown) => {
@@ -88,6 +128,54 @@ const toIsoDateString = (value: unknown) => {
   return Number.isNaN(date.getTime()) ? "" : date.toISOString();
 };
 
+const serializeMediaItem = (item: RawMediaInput): ThreadMedia | null => {
+  const kind = item.kind === "video" ? "video" : item.kind === "image" ? "image" : null;
+  const url = typeof item.url === "string" ? item.url : "";
+  const mimeType = typeof item.mimeType === "string" ? item.mimeType : "";
+  const size = typeof item.size === "number" ? item.size : Number(item.size ?? 0);
+  const width = typeof item.width === "number" ? item.width : null;
+  const height = typeof item.height === "number" ? item.height : null;
+  const durationSec = typeof item.durationSec === "number" ? item.durationSec : null;
+  const providerKey = typeof item.providerKey === "string" ? item.providerKey : "";
+
+  if (!kind || !url || !mimeType || !Number.isFinite(size) || size <= 0 || !providerKey) {
+    return null;
+  }
+
+  return {
+    kind,
+    url,
+    mimeType,
+    size,
+    width,
+    height,
+    durationSec,
+    providerKey,
+  };
+};
+
+const normalizeMediaList = (media: unknown): ThreadMedia[] => {
+  if (!Array.isArray(media)) return [];
+
+  return media
+    .map((item) => serializeMediaItem(item as RawMediaInput))
+    .filter((item): item is ThreadMedia => Boolean(item));
+};
+
+const parseMediaPayload = (media: unknown): ThreadMedia[] => {
+  const normalized = normalizeMediaList(media);
+  const validated = ThreadMediaValidation.array().max(4).parse(normalized);
+
+  for (const item of validated) {
+    const allowedMime = MEDIA_MIME_BY_KIND[item.kind];
+    if (!allowedMime.has(item.mimeType)) {
+      throw new Error("Media kind and mime type do not match");
+    }
+  }
+
+  return validated;
+};
+
 const serializeFeedPost = (post: {
   _id?: unknown;
   parentId?: unknown;
@@ -108,6 +196,7 @@ const serializeFeedPost = (post: {
   children?: Array<{ author?: { image?: unknown } | null }>;
   likes?: unknown[];
   reposts?: unknown[];
+  media?: unknown[];
 }): FeedPost => {
   const author = post.author ?? null;
   const community = post.community ?? null;
@@ -149,6 +238,7 @@ const serializeFeedPost = (post: {
     reposts: Array.isArray(post.reposts)
       ? post.reposts.map((value) => String(value))
       : [],
+    media: normalizeMediaList(post.media),
   };
 };
 
@@ -172,6 +262,7 @@ const serializeThreadDetailNode = (node: {
   children?: Array<unknown>;
   likes?: unknown[];
   reposts?: unknown[];
+  media?: unknown[];
 }): ThreadDetailNode => {
   const author = node.author ?? null;
   const community = node.community ?? null;
@@ -216,6 +307,7 @@ const serializeThreadDetailNode = (node: {
               children?: Array<unknown>;
               likes?: unknown[];
               reposts?: unknown[];
+              media?: unknown[];
             }
           )
         )
@@ -226,6 +318,7 @@ const serializeThreadDetailNode = (node: {
     reposts: Array.isArray(node.reposts)
       ? node.reposts.map((value) => String(value))
       : [],
+    media: normalizeMediaList(node.media),
   };
 };
 
@@ -298,6 +391,7 @@ export async function fetchPostsCursor({
       children?: Array<{ author?: { image?: unknown } | null }>;
       likes?: unknown[];
       reposts?: unknown[];
+      media?: unknown[];
     })
   );
   const nextCursor =
@@ -317,6 +411,7 @@ interface Params {
   author: string;
   communityId: string | null;
   path: string;
+  media?: ThreadMedia[];
 }
 
 export async function createThread({
@@ -324,9 +419,17 @@ export async function createThread({
   author,
   communityId,
   path,
+  media = [],
 }: Params) {
   try {
     await connectToDB();
+
+    const normalizedText = typeof text === "string" ? text.trim() : "";
+    const parsedMedia = parseMediaPayload(media);
+
+    if (normalizedText.length < 3 && parsedMedia.length === 0) {
+      throw new Error("Thread must contain at least 3 characters or media");
+    }
 
     const authorUser = await User.findOne({ id: author }).select("_id");
     if (!authorUser?._id) {
@@ -338,9 +441,10 @@ export async function createThread({
       : null;
 
     const createdThread = await Thread.create({
-      text,
+      text: normalizedText,
       author: authorUser._id,
       community: communityIdObject?._id ?? null,
+      media: parsedMedia,
     });
 
     // Update User model
@@ -535,6 +639,7 @@ export async function fetchThreadById(threadId: string) {
         children?: Array<unknown>;
         likes?: unknown[];
         reposts?: unknown[];
+        media?: unknown[];
       }
     );
   } catch (err) {
@@ -546,11 +651,19 @@ export async function addCommentToThread(
   threadId: string,
   commentText: string,
   userId: string,
-  path: string
+  path: string,
+  media: ThreadMedia[] = []
 ) {
   await connectToDB();
 
   try {
+    const normalizedText = typeof commentText === "string" ? commentText.trim() : "";
+    const parsedMedia = parseMediaPayload(media);
+
+    if (normalizedText.length < 3 && parsedMedia.length === 0) {
+      throw new Error("Reply must contain at least 3 characters or media");
+    }
+
     const user = await User.findOne({ id: userId }).select("_id");
     if (!user?._id) {
       throw new Error("User not found");
@@ -565,9 +678,10 @@ export async function addCommentToThread(
 
     // Create the new comment thread
     const commentThread = new Thread({
-      text: commentText,
+      text: normalizedText,
       author: user._id,
       parentId: threadId, // Set the parentId to the original thread's ID
+      media: parsedMedia,
     });
 
     // Save the comment thread to the database

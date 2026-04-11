@@ -8,6 +8,7 @@ import Thread from "../models/thread.model";
 import User from "../models/user.model";
 
 import { connectToDB } from "../mongoose";
+import { ThreadMediaValidation } from "../validations/thread";
 
 const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "Unknown error";
@@ -152,6 +153,18 @@ type ThreadView = {
   children?: unknown[];
   likes?: unknown[];
   reposts?: unknown[];
+  media?: unknown[];
+};
+
+type ThreadMedia = {
+  kind: "image" | "video";
+  url: string;
+  mimeType: string;
+  size: number;
+  width?: number | null;
+  height?: number | null;
+  durationSec?: number | null;
+  providerKey: string;
 };
 
 type SerializedThread = {
@@ -172,6 +185,7 @@ type SerializedThread = {
   children: Array<{ author: { image: string } }>;
   likes: string[];
   reposts: string[];
+  media: ThreadMedia[];
 };
 
 const resolveUserQuery = (value: string) =>
@@ -197,6 +211,67 @@ const toIsoDateString = (value: unknown) => {
   if (!value) return "";
   const date = new Date(value as string | number | Date);
   return Number.isNaN(date.getTime()) ? "" : date.toISOString();
+};
+
+const normalizeMediaList = (media: unknown): ThreadMedia[] => {
+  if (!Array.isArray(media)) return [];
+
+  const parsedItems = media
+    .map((item) => {
+      const mediaItem = item as {
+        kind?: unknown;
+        url?: unknown;
+        mimeType?: unknown;
+        size?: unknown;
+        width?: unknown;
+        height?: unknown;
+        durationSec?: unknown;
+        providerKey?: unknown;
+      };
+
+      const kind =
+        mediaItem.kind === "image" || mediaItem.kind === "video"
+          ? mediaItem.kind
+          : null;
+
+      if (!kind) return null;
+
+      return {
+        kind,
+        url: typeof mediaItem.url === "string" ? mediaItem.url : "",
+        mimeType:
+          typeof mediaItem.mimeType === "string" ? mediaItem.mimeType : "",
+        size:
+          typeof mediaItem.size === "number"
+            ? mediaItem.size
+            : Number(mediaItem.size ?? 0),
+        width: typeof mediaItem.width === "number" ? mediaItem.width : null,
+        height: typeof mediaItem.height === "number" ? mediaItem.height : null,
+        durationSec:
+          typeof mediaItem.durationSec === "number"
+            ? mediaItem.durationSec
+            : null,
+        providerKey:
+          typeof mediaItem.providerKey === "string"
+            ? mediaItem.providerKey
+            : "",
+      };
+    })
+    .filter(
+      (item): item is {
+        kind: "image" | "video";
+        url: string;
+        mimeType: string;
+        size: number;
+        width: number | null;
+        height: number | null;
+        durationSec: number | null;
+        providerKey: string;
+      } => Boolean(item)
+    );
+
+  const safe = ThreadMediaValidation.array().max(4).safeParse(parsedItems);
+  return safe.success ? safe.data : [];
 };
 
 const serializeThread = (thread: ThreadView): SerializedThread => ({
@@ -232,6 +307,7 @@ const serializeThread = (thread: ThreadView): SerializedThread => ({
   reposts: Array.isArray(thread.reposts)
     ? thread.reposts.map((value) => String(value))
     : [],
+  media: normalizeMediaList(thread.media),
 });
 
 
@@ -292,9 +368,11 @@ export async function fetchUserPosts(
   {
     pageNumber = 1,
     pageSize = 10,
+    onlyWithMedia = false,
   }: {
     pageNumber?: number;
     pageSize?: number;
+    onlyWithMedia?: boolean;
   } = {}
 ) {
   try {
@@ -307,10 +385,18 @@ export async function fetchUserPosts(
     const normalizedPageSize = Number.isFinite(pageSize) && pageSize > 0 ? pageSize : 10;
     const skipAmount = (normalizedPageNumber - 1) * normalizedPageSize;
 
-    const query = {
+    const query: {
+      author: unknown;
+      parentId: { $in: Array<null | undefined | ""> };
+      media?: { $exists: true; $ne: [] };
+    } = {
       author: user._id,
       parentId: { $in: [null, undefined, ""] },
     };
+
+    if (onlyWithMedia) {
+      query.media = { $exists: true, $ne: [] };
+    }
 
     const totalCount = await Thread.countDocuments(query);
 
@@ -356,7 +442,7 @@ export async function fetchUserPosts(
   }
 }
 
-export async function fetchUserRepliesReceived(
+export async function fetchUserMediaPosts(
   userId: string,
   {
     pageNumber = 1,
@@ -364,6 +450,25 @@ export async function fetchUserRepliesReceived(
   }: {
     pageNumber?: number;
     pageSize?: number;
+  } = {}
+) {
+  return fetchUserPosts(userId, {
+    pageNumber,
+    pageSize,
+    onlyWithMedia: true,
+  });
+}
+
+export async function fetchUserRepliesReceived(
+  userId: string,
+  {
+    pageNumber = 1,
+    pageSize = 10,
+    onlyWithMedia = false,
+  }: {
+    pageNumber?: number;
+    pageSize?: number;
+    onlyWithMedia?: boolean;
   } = {}
 ) {
   try {
@@ -396,10 +501,18 @@ export async function fetchUserRepliesReceived(
       };
     }
 
-    const query = {
+    const query: {
+      parentId: { $in: string[] };
+      author: { $ne: unknown };
+      media?: { $exists: true; $ne: [] };
+    } = {
       parentId: { $in: authoredThreadIds },
       author: { $ne: user._id },
     };
+
+    if (onlyWithMedia) {
+      query.media = { $exists: true, $ne: [] };
+    }
 
     const totalCount = await Thread.countDocuments(query);
 
@@ -451,12 +564,18 @@ export async function fetchUserStats(userId: string) {
 
     const user = await User.findOne(resolveUserQuery(userId)).select("_id");
     if (!user?._id) {
-      return { threadCount: 0, replyCount: 0 };
+      return { threadCount: 0, replyCount: 0, mediaCount: 0 };
     }
 
     const threadCount = await Thread.countDocuments({
       author: user._id,
       parentId: { $in: [null, undefined, ""] },
+    });
+
+    const mediaCount = await Thread.countDocuments({
+      author: user._id,
+      parentId: { $in: [null, undefined, ""] },
+      media: { $exists: true, $ne: [] },
     });
 
     const authoredThreads = await Thread.find({ author: user._id }).select("_id").lean();
@@ -471,7 +590,7 @@ export async function fetchUserStats(userId: string) {
         })
       : 0;
 
-    return { threadCount, replyCount };
+    return { threadCount, replyCount, mediaCount };
   } catch (error) {
     throw error;
   }

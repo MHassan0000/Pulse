@@ -4,7 +4,7 @@ import ThreadsTab from "@/components/profile/ThreadsTab";
 type ProfileTabPanelProps = {
   currentUserId: string;
   accountId: string;
-  mode: "threads" | "replies";
+  mode: "threads" | "replies" | "media";
   pageNumber: number;
   pageSize: number;
   path: string;
@@ -34,10 +34,22 @@ const ProfileTabPanel = async ({
         path={path}
         pageNumber={pageNumber}
         isNext={tabResult.isNext}
-        queryKey={mode === "threads" ? "threadsPage" : "repliesPage"}
+        queryKey={
+          mode === "threads"
+            ? "threadsPage"
+            : mode === "replies"
+              ? "repliesPage"
+              : "mediaPage"
+        }
         tabKey="tab"
         tabValue={mode}
-        preserveQueryKeys={mode === "threads" ? ["tab", "repliesPage"] : ["tab", "threadsPage"]}
+        preserveQueryKeys={
+          mode === "threads"
+            ? ["tab", "repliesPage", "mediaPage"]
+            : mode === "replies"
+              ? ["tab", "threadsPage", "mediaPage"]
+              : ["tab", "threadsPage", "repliesPage"]
+        }
       />
     </>
   );

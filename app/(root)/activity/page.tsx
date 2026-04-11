@@ -31,6 +31,13 @@ const toDisplayDate = (value: string | Date | undefined) => {
   return date.toISOString().slice(0, 16).replace("T", " ");
 };
 
+const isRedirectError = (error: unknown) =>
+  typeof error === "object" &&
+  error !== null &&
+  "digest" in error &&
+  typeof (error as { digest?: unknown }).digest === "string" &&
+  (error as { digest: string }).digest.startsWith("NEXT_REDIRECT");
+
 async function Page({
   searchParams,
 }: {
@@ -113,7 +120,11 @@ async function Page({
         </div>
       </section>
     );
-  } catch {
+  } catch (error) {
+    if (isRedirectError(error)) {
+      throw error;
+    }
+
     return (
       <section className="page-scroll h-full overflow-y-auto pb-24">
         <div className="mx-auto flex w-full max-w-3xl flex-col">

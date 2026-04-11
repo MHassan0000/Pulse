@@ -8,6 +8,7 @@ import Thread from "../models/thread.model";
 import User from "../models/user.model";
 
 import { connectToDB } from "../mongoose";
+import { ThreadMediaValidation } from "../validations/thread";
 
 const sanitizeCommunityUsername = (value: string) =>
   value
@@ -42,6 +43,67 @@ const toIsoDateString = (value: unknown) => {
   return Number.isNaN(date.getTime()) ? "" : date.toISOString();
 };
 
+const normalizeMediaList = (media: unknown): ThreadMedia[] => {
+  if (!Array.isArray(media)) return [];
+
+  const parsedItems = media
+    .map((item) => {
+      const mediaItem = item as {
+        kind?: unknown;
+        url?: unknown;
+        mimeType?: unknown;
+        size?: unknown;
+        width?: unknown;
+        height?: unknown;
+        durationSec?: unknown;
+        providerKey?: unknown;
+      };
+
+      const kind =
+        mediaItem.kind === "image" || mediaItem.kind === "video"
+          ? mediaItem.kind
+          : null;
+
+      if (!kind) return null;
+
+      return {
+        kind,
+        url: typeof mediaItem.url === "string" ? mediaItem.url : "",
+        mimeType:
+          typeof mediaItem.mimeType === "string" ? mediaItem.mimeType : "",
+        size:
+          typeof mediaItem.size === "number"
+            ? mediaItem.size
+            : Number(mediaItem.size ?? 0),
+        width: typeof mediaItem.width === "number" ? mediaItem.width : null,
+        height: typeof mediaItem.height === "number" ? mediaItem.height : null,
+        durationSec:
+          typeof mediaItem.durationSec === "number"
+            ? mediaItem.durationSec
+            : null,
+        providerKey:
+          typeof mediaItem.providerKey === "string"
+            ? mediaItem.providerKey
+            : "",
+      };
+    })
+    .filter(
+      (item): item is {
+        kind: "image" | "video";
+        url: string;
+        mimeType: string;
+        size: number;
+        width: number | null;
+        height: number | null;
+        durationSec: number | null;
+        providerKey: string;
+      } => Boolean(item)
+    );
+
+  const safe = ThreadMediaValidation.array().max(4).safeParse(parsedItems);
+  return safe.success ? safe.data : [];
+};
+
 type CommunityThreadView = {
   _id: unknown;
   text?: unknown;
@@ -60,6 +122,18 @@ type CommunityThreadView = {
   children?: Array<{ author?: { image?: unknown } | null }>;
   likes?: unknown[];
   reposts?: unknown[];
+  media?: unknown[];
+};
+
+type ThreadMedia = {
+  kind: "image" | "video";
+  url: string;
+  mimeType: string;
+  size: number;
+  width?: number | null;
+  height?: number | null;
+  durationSec?: number | null;
+  providerKey: string;
 };
 
 type SerializedCommunityThread = {
@@ -80,6 +154,7 @@ type SerializedCommunityThread = {
   children: Array<{ author: { image: string } }>;
   likes: string[];
   reposts: string[];
+  media: ThreadMedia[];
 };
 
 type CommunityMember = {
@@ -124,6 +199,7 @@ const serializeCommunityThread = (
   reposts: Array.isArray(thread.reposts)
     ? thread.reposts.map((value) => String(value))
     : [],
+  media: normalizeMediaList(thread.media),
 });
 
 export async function fetchCommunityDetails(id: string) {
@@ -167,6 +243,12 @@ export async function fetchCommunityDetails(id: string) {
     parentId: { $in: [null, undefined, ""] },
   });
 
+  const mediaCount = await Thread.countDocuments({
+    community: communityDetails._id,
+    parentId: { $in: [null, undefined, ""] },
+    media: { $exists: true, $ne: [] },
+  });
+
   const memberCount = await User.countDocuments({ communities: communityDetails._id });
 
   return {
@@ -198,6 +280,7 @@ export async function fetchCommunityDetails(id: string) {
       : null,
     memberCount,
     threadCount,
+    mediaCount,
   };
 }
 
@@ -253,9 +336,11 @@ export async function fetchCommunityPosts(
   {
     pageNumber = 1,
     pageSize = 10,
+    onlyWithMedia = false,
   }: {
     pageNumber?: number;
     pageSize?: number;
+    onlyWithMedia?: boolean;
   } = {}
 ) {
   await connectToDB();
@@ -274,10 +359,18 @@ export async function fetchCommunityPosts(
   const normalizedPageSize = Number.isFinite(pageSize) && pageSize > 0 ? pageSize : 10;
   const skipAmount = (normalizedPageNumber - 1) * normalizedPageSize;
 
-  const threadQuery = {
+  const threadQuery: {
+    community: unknown;
+    parentId: { $in: Array<null | undefined | ""> };
+    media?: { $exists: true; $ne: [] };
+  } = {
     community: community._id,
     parentId: { $in: [null, undefined, ""] },
   };
+
+  if (onlyWithMedia) {
+    threadQuery.media = { $exists: true, $ne: [] };
+  }
 
   const totalCount = await Thread.countDocuments(threadQuery);
 
@@ -324,6 +417,23 @@ export async function fetchCommunityPosts(
     isNext: totalCount > skipAmount + threads.length,
     totalCount,
   };
+}
+
+export async function fetchCommunityMediaPosts(
+  id: string,
+  {
+    pageNumber = 1,
+    pageSize = 10,
+  }: {
+    pageNumber?: number;
+    pageSize?: number;
+  } = {}
+) {
+  return fetchCommunityPosts(id, {
+    pageNumber,
+    pageSize,
+    onlyWithMedia: true,
+  });
 }
 
 export async function fetchCommunities({

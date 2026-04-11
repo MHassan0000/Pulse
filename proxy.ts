@@ -5,12 +5,18 @@ const protectedRoutes = createRouteMatcher([
   "/profile(.*)",
   "/activity(.*)",
   "/communities(.*)",
+  "/search(.*)",
   "/thread(.*)",
 ]);
 
 export default clerkMiddleware((auth, req) => {
   if (protectedRoutes(req)) {
-    auth.protect();
+    const signUpUrl = new URL("/sign-up", req.url);
+    signUpUrl.searchParams.set("redirect_url", req.url);
+
+    auth.protect(undefined, {
+      unauthenticatedUrl: signUpUrl.toString(),
+    });
   }
 });
 

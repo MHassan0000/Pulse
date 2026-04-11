@@ -27,12 +27,72 @@ type ThreadChild = {
   children?: Array<{ author?: { image?: string } }>;
   likes?: unknown[];
   reposts?: unknown[];
+  media?: unknown[];
+};
+
+type ThreadMedia = {
+  kind: "image" | "video";
+  url: string;
+  mimeType: string;
+  size: number;
+  width: number | null;
+  height: number | null;
+  durationSec: number | null;
+  providerKey: string;
 };
 
 const toSafeIsoString = (value: unknown) => {
   if (!value) return "";
   const date = new Date(value as string | number | Date);
   return Number.isNaN(date.getTime()) ? "" : date.toISOString();
+};
+
+const normalizeMedia = (media: unknown): ThreadMedia[] => {
+  if (!Array.isArray(media)) return [];
+
+  return media
+    .map((item) => {
+      const mediaItem = item as {
+        kind?: unknown;
+        url?: unknown;
+        mimeType?: unknown;
+        size?: unknown;
+        width?: unknown;
+        height?: unknown;
+        durationSec?: unknown;
+        providerKey?: unknown;
+      };
+
+      const kind =
+        mediaItem.kind === "image" || mediaItem.kind === "video"
+          ? mediaItem.kind
+          : null;
+      const url = typeof mediaItem.url === "string" ? mediaItem.url : "";
+      const mimeType =
+        typeof mediaItem.mimeType === "string" ? mediaItem.mimeType : "";
+      const size =
+        typeof mediaItem.size === "number"
+          ? mediaItem.size
+          : Number(mediaItem.size ?? 0);
+
+      if (!kind || !url || !mimeType || !Number.isFinite(size) || size <= 0) {
+        return null;
+      }
+
+      return {
+        kind,
+        url,
+        mimeType,
+        size,
+        width: typeof mediaItem.width === "number" ? mediaItem.width : null,
+        height: typeof mediaItem.height === "number" ? mediaItem.height : null,
+        durationSec:
+          typeof mediaItem.durationSec === "number" ? mediaItem.durationSec : null,
+        providerKey:
+          typeof mediaItem.providerKey === "string" ? mediaItem.providerKey : "",
+      };
+    })
+    .filter((item): item is ThreadMedia => Boolean(item));
 };
 
 async function Page({
@@ -84,20 +144,20 @@ async function Page({
     },
     community: threadCommunity
       ? {
-          id: threadCommunity.id ?? "",
-          name: threadCommunity.name ?? "",
-          image: threadCommunity.image ?? "",
-        }
+        id: threadCommunity.id ?? "",
+        name: threadCommunity.name ?? "",
+        image: threadCommunity.image ?? "",
+      }
       : null,
     createdAt: thread.createdAt
       ? toSafeIsoString(thread.createdAt)
       : "",
     comments: Array.isArray(thread.children)
       ? thread.children.map((child: ThreadChild) => ({
-          author: {
-            image: child?.author?.image ?? "",
-          },
-        }))
+        author: {
+          image: child?.author?.image ?? "",
+        },
+      }))
       : [],
     likes: Array.isArray(thread.likes)
       ? thread.likes.map((likedBy: unknown) => String(likedBy))
@@ -105,6 +165,7 @@ async function Page({
     reposts: Array.isArray(thread.reposts)
       ? thread.reposts.map((repostedBy: unknown) => String(repostedBy))
       : [],
+    media: normalizeMedia(thread.media),
   };
 
   return (
@@ -121,6 +182,7 @@ async function Page({
           comments={threadData.comments}
           likes={threadData.likes}
           reposts={threadData.reposts}
+          media={threadData.media}
         />
       </div>
 
@@ -146,7 +208,7 @@ async function Page({
                 <span className="text-[11px] uppercase tracking-[0.35em] text-zinc-400">
                   Reply
                 </span>
-                <span className="h-px flex-1 bg-gradient-to-r from-zinc-200/80 to-transparent dark:from-[#2a2a2a]/80" />
+                <span className="h-px flex-1 bg-linear-to-r from-zinc-200/80 to-transparent dark:from-[#2a2a2a]/80" />
               </div>
               <PostCard
                 id={childItem._id ? String(childItem._id) : ""}
@@ -161,10 +223,10 @@ async function Page({
                 community={
                   childCommunity
                     ? {
-                        id: childCommunity.id ?? "",
-                        name: childCommunity.name ?? "",
-                        image: childCommunity.image ?? "",
-                      }
+                      id: childCommunity.id ?? "",
+                      name: childCommunity.name ?? "",
+                      image: childCommunity.image ?? "",
+                    }
                     : null
                 }
                 createdAt={
@@ -175,10 +237,10 @@ async function Page({
                 comments={
                   Array.isArray(childItem.children)
                     ? childItem.children.map((child) => ({
-                        author: {
-                          image: child?.author?.image ?? "",
-                        },
-                      }))
+                      author: {
+                        image: child?.author?.image ?? "",
+                      },
+                    }))
                     : []
                 }
                 likes={
@@ -191,6 +253,7 @@ async function Page({
                     ? childItem.reposts.map((repostedBy: unknown) => String(repostedBy))
                     : []
                 }
+                media={normalizeMedia(childItem.media)}
                 isComment
               />
             </div>

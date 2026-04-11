@@ -13,25 +13,57 @@ export const ourFileRouter = {
        * For full list of options and defaults, see the File Route API reference
        * @see https://docs.uploadthing.com/file-routes#route-config
        */
-      maxFileSize: "4MB",
-      maxFileCount: 1,
+      maxFileSize: "8MB",
+      maxFileCount: 4,
+    },
+    video: {
+      maxFileSize: "64MB",
+      maxFileCount: 4,
     },
   })
     // Set permissions and file types for this FileRoute
-    .middleware(async () => {
+    .middleware(async ({ files }) => {
       // This code runs on your server before upload
       const { userId } = await auth();
 
       // If you throw, the user will not be able to upload
       if (!userId) throw new UploadThingError("Unauthorized");
 
-      // Whatever is returned here is accessible in onUploadComplete as `metadata`
+      if (!Array.isArray(files) || files.length === 0) {
+        throw new UploadThingError("No files provided");
+      }
+
+      if (files.length > 4) {
+        throw new UploadThingError("You can upload up to 4 files per post");
+      }
+
       return { userId };
     })
-    .onUploadComplete(async ({ metadata }) => {
-      // This code RUNS ON YOUR SERVER after upload
-      // !!! Whatever is returned here is sent to the clientside `onClientUploadComplete` callback
-      return { uploadedBy: metadata.userId };
+    .onUploadComplete(async ({ metadata, file }) => {
+      const isImage = file.type.startsWith("image/");
+      const isVideo = file.type.startsWith("video/");
+      const resolvedUrl =
+        typeof file.appUrl === "string" && file.appUrl.trim().length > 0
+          ? file.appUrl
+          : file.ufsUrl;
+
+      if (!isImage && !isVideo) {
+        throw new UploadThingError("Unsupported file type");
+      }
+
+      return {
+        uploadedBy: metadata.userId,
+        media: {
+          kind: isImage ? "image" : "video",
+          url: resolvedUrl,
+          mimeType: file.type,
+          size: file.size,
+          width: null,
+          height: null,
+          durationSec: null,
+          providerKey: file.key,
+        },
+      };
     }),
 } satisfies FileRouter;
 

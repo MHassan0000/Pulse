@@ -143,48 +143,48 @@ const AccountProfile = ({
         ) : null}
 
         <div className="grid gap-6 rounded-2xl border border-zinc-200/80 bg-zinc-50/70 p-4 dark:border-[#1f1f1f] dark:bg-black/30 md:grid-cols-[auto_1fr] md:items-center">
-        <FormField
-          control={form.control}
-          name="profile_photo"
-          render={({ field }) => (
-            <FormItem className="flex items-center gap-4 md:flex-col md:items-start">
-              <FormLabel className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-zinc-200 bg-zinc-100 shadow-sm dark:border-[#2a2a2a] dark:bg-black">
-                {field.value ? (
-                  <Image
-                    src={field.value}
-                    alt="profile_icon"
-                    width={80}
-                    height={80}
-                    priority
-                    className="h-full w-full rounded-full object-cover"
+          <FormField
+            control={form.control}
+            name="profile_photo"
+            render={({ field }) => (
+              <FormItem className="flex items-center gap-4 md:flex-col md:items-start">
+                <FormLabel className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-zinc-200 bg-zinc-100 shadow-sm dark:border-[#2a2a2a] dark:bg-black">
+                  {field.value ? (
+                    <Image
+                      src={field.value}
+                      alt="profile_icon"
+                      width={80}
+                      height={80}
+                      priority
+                      className="h-full w-full rounded-full object-cover"
+                    />
+                  ) : (
+                    <Image
+                      src="/assets/profile.svg"
+                      alt="profile_icon"
+                      width={24}
+                      height={24}
+                      className="object-contain opacity-60"
+                    />
+                  )}
+                </FormLabel>
+                <FormControl className="w-full md:w-auto">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    placeholder="Add profile photo"
+                    className="cursor-pointer border-zinc-200 bg-white text-sm text-zinc-700 file:mr-3 file:rounded-full file:border-0 file:bg-zinc-100 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-zinc-600 hover:file:bg-zinc-200 dark:border-[#1f1f1f] dark:bg-black dark:text-zinc-200 dark:file:bg-zinc-900 dark:file:text-zinc-300 dark:hover:file:bg-zinc-800 md:min-w-70"
+                    onChange={(e) => handleImage(e, field.onChange)}
                   />
-                ) : (
-                  <Image
-                    src="/assets/profile.svg"
-                    alt="profile_icon"
-                    width={24}
-                    height={24}
-                    className="object-contain opacity-60"
-                  />
-                )}
-              </FormLabel>
-              <FormControl className="w-full md:w-auto">
-                <Input
-                  type="file"
-                  accept="image/*"
-                  placeholder="Add profile photo"
-                  className="cursor-pointer border-zinc-200 bg-white text-sm text-zinc-700 file:mr-3 file:rounded-full file:border-0 file:bg-zinc-100 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-zinc-600 hover:file:bg-zinc-200 dark:border-[#1f1f1f] dark:bg-black dark:text-zinc-200 dark:file:bg-zinc-900 dark:file:text-zinc-300 dark:hover:file:bg-zinc-800 md:min-w-[280px]"
-                  onChange={(e) => handleImage(e, field.onChange)}
-                />
-              </FormControl>
-            </FormItem>
-          )}
-        />
-        {profileMode === "edit" ? (
-          <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-xs text-zinc-600 dark:border-[#1f1f1f] dark:bg-[#0f0f0f] dark:text-zinc-300">
-            Update your photo and profile details. Changes are reflected across threads, comments, and community memberships.
-          </div>
-        ) : null}
+                </FormControl>
+              </FormItem>
+            )}
+          />
+          {profileMode === "edit" ? (
+            <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-xs text-zinc-600 dark:border-[#1f1f1f] dark:bg-[#0f0f0f] dark:text-zinc-300">
+              Update your photo and profile details. Changes are reflected across threads, comments, and community memberships.
+            </div>
+          ) : null}
         </div>
 
         <FormField

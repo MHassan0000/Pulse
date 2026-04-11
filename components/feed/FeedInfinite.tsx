@@ -25,6 +25,29 @@ type RawPost = {
   children?: Array<{ author?: { image?: string } }>;
   likes?: unknown[];
   reposts?: unknown[];
+  media?: RawMedia[];
+};
+
+type RawMedia = {
+  kind?: "image" | "video";
+  url?: string;
+  mimeType?: string;
+  size?: number;
+  width?: number | null;
+  height?: number | null;
+  durationSec?: number | null;
+  providerKey?: string;
+};
+
+type NormalizedMedia = {
+  kind: "image" | "video";
+  url: string;
+  mimeType: string;
+  size: number;
+  width: number | null;
+  height: number | null;
+  durationSec: number | null;
+  providerKey: string;
 };
 
 type NormalizedPost = {
@@ -45,6 +68,35 @@ type NormalizedPost = {
   comments: Array<{ author: { image: string } }>;
   likes: string[];
   reposts: string[];
+  media: NormalizedMedia[];
+};
+
+const normalizeMedia = (media: RawMedia[] | undefined): NormalizedMedia[] => {
+  if (!Array.isArray(media)) return [];
+
+  return media
+    .map((item) => {
+      const kind = item.kind === "image" || item.kind === "video" ? item.kind : null;
+      const url = typeof item.url === "string" ? item.url : "";
+      const mimeType = typeof item.mimeType === "string" ? item.mimeType : "";
+      const size = typeof item.size === "number" ? item.size : Number(item.size ?? 0);
+
+      if (!kind || !url || !mimeType || !Number.isFinite(size) || size <= 0) {
+        return null;
+      }
+
+      return {
+        kind,
+        url,
+        mimeType,
+        size,
+        width: typeof item.width === "number" ? item.width : null,
+        height: typeof item.height === "number" ? item.height : null,
+        durationSec: typeof item.durationSec === "number" ? item.durationSec : null,
+        providerKey: typeof item.providerKey === "string" ? item.providerKey : "",
+      };
+    })
+    .filter((item): item is NormalizedMedia => Boolean(item));
 };
 
 type FeedInfiniteProps = {
@@ -93,6 +145,7 @@ const normalizePost = (post: RawPost): NormalizedPost => {
     reposts: Array.isArray(post.reposts)
       ? post.reposts.map((value) => String(value))
       : [],
+    media: normalizeMedia(post.media),
   };
 };
 
@@ -204,6 +257,7 @@ const FeedInfinite = ({
           comments={post.comments}
           likes={post.likes}
           reposts={post.reposts}
+          media={post.media}
         />
       ))}
 

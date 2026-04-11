@@ -23,7 +23,7 @@ const EditProfilePage = async () => {
   return (
     <section className="page-scroll h-full overflow-y-auto pb-24">
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
-        <div className="rounded-3xl border border-zinc-200 bg-gradient-to-br from-zinc-50 via-white to-zinc-100 p-6 shadow-[0_22px_70px_rgba(0,0,0,0.08)] dark:border-[#1f1f1f] dark:from-[#111] dark:via-[#0f0f0f] dark:to-[#0a0a0a] md:p-8">
+        <div className="rounded-3xl border border-zinc-200 bg-linear-to-br from-zinc-50 via-white to-zinc-100 p-6 shadow-[0_22px_70px_rgba(0,0,0,0.08)] dark:border-[#1f1f1f] dark:from-[#111] dark:via-[#0f0f0f] dark:to-[#0a0a0a] md:p-8">
           <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.32em] text-zinc-500">Profile</p>

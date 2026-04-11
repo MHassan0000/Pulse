@@ -63,6 +63,10 @@ export const communityTabs = [
     value: "threads",
   },
   {
+    label: "Media",
+    value: "media",
+  },
+  {
     label: "Members",
     value: "members",
   },

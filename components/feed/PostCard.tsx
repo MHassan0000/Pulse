@@ -23,7 +23,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { useOptimistic, useTransition } from "react";
+import { useMemo, useOptimistic, useState, useTransition } from "react";
 
 type PostCardProps = {
   id: string;
@@ -49,7 +49,137 @@ type PostCardProps = {
   }[];
   likes?: string[];
   reposts?: string[];
+  media?: {
+    kind: "image" | "video";
+    url: string;
+    mimeType: string;
+    size: number;
+    width: number | null;
+    height: number | null;
+    durationSec: number | null;
+    providerKey: string;
+  }[];
   isComment?: boolean;
+};
+
+type PostMedia = NonNullable<PostCardProps["media"]>[number];
+
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(Math.max(value, min), max);
+
+const getMediaAspectRatio = (item: PostMedia) => {
+  if (
+    typeof item.width === "number" &&
+    item.width > 0 &&
+    typeof item.height === "number" &&
+    item.height > 0
+  ) {
+    return clamp(item.width / item.height, 0.65, 1.95);
+  }
+
+  return item.kind === "video" ? 16 / 9 : 4 / 3;
+};
+
+const buildMediaSrcCandidates = (item: PostMedia) => {
+  const candidates: string[] = [];
+  const pushCandidate = (value: string | undefined) => {
+    if (!value) return;
+    const normalized = value.trim();
+    if (!normalized || candidates.includes(normalized)) return;
+    candidates.push(normalized);
+  };
+
+  let appIdFromUrl = "";
+  try {
+    const parsed = new URL(item.url);
+    const hostMatch = parsed.hostname.match(/^([^.]+)\.ufs\.sh$/i);
+    if (hostMatch?.[1]) {
+      appIdFromUrl = hostMatch[1];
+    } else if (parsed.hostname === "ufs.sh") {
+      const pathAppId = parsed.pathname.match(/^\/f\/([^/]+)/)?.[1] ?? "";
+      appIdFromUrl = pathAppId;
+    }
+  } catch {
+    appIdFromUrl = "";
+  }
+
+  const keyFromUrl = item.url.match(/\/f\/([^/?#]+)/)?.[1] ?? "";
+  const providerKey = item.providerKey?.trim() || keyFromUrl;
+
+  if (appIdFromUrl && providerKey) {
+    pushCandidate(`https://${appIdFromUrl}.ufs.sh/f/${providerKey}`);
+  }
+
+  pushCandidate(item.url);
+
+  if (providerKey) {
+    if (appIdFromUrl) {
+      pushCandidate(`https://${appIdFromUrl}.ufs.sh/f/${providerKey.replace(/I/g, "l")}`);
+      pushCandidate(`https://${appIdFromUrl}.ufs.sh/f/${providerKey.replace(/l/g, "I")}`);
+    }
+
+    pushCandidate(`https://utfs.io/f/${providerKey}`);
+    pushCandidate(`https://ufs.sh/f/${providerKey}`);
+    pushCandidate(`https://utfs.io/f/${providerKey.replace(/I/g, "l")}`);
+    pushCandidate(`https://utfs.io/f/${providerKey.replace(/l/g, "I")}`);
+  }
+
+  return candidates;
+};
+
+const PostMediaImage = ({ item, singleMedia }: { item: PostMedia; singleMedia: boolean }) => {
+  const srcCandidates = useMemo(() => buildMediaSrcCandidates(item), [item]);
+  const [candidateIndex, setCandidateIndex] = useState(0);
+  const [imageFailed, setImageFailed] = useState(false);
+
+  const src = srcCandidates[candidateIndex] ?? item.url;
+  const aspectRatio = getMediaAspectRatio(item);
+
+  return (
+    <a
+      href={src}
+      target="_blank"
+      rel="noreferrer"
+      className={`group relative block w-full overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100 dark:border-[#1f1f1f] dark:bg-black ${
+        singleMedia ? "col-span-full mx-auto max-w-[920px]" : ""
+      }`}
+    >
+      <div
+        className={`relative w-full ${
+          singleMedia ? "min-h-[260px] max-h-[760px]" : "min-h-[190px] max-h-[420px]"
+        }`}
+        style={{ aspectRatio: String(aspectRatio) }}
+      >
+        {imageFailed ? (
+          <div className="flex h-full w-full items-center justify-center bg-zinc-100 text-center text-xs text-zinc-500 dark:bg-[#090909] dark:text-zinc-400">
+            Image preview unavailable
+          </div>
+        ) : (
+          <Image
+            src={src}
+            alt="Thread media"
+            fill
+            sizes={
+              singleMedia
+                ? "(max-width: 768px) calc(100vw - 4rem), (max-width: 1200px) 86vw, 920px"
+                : "(max-width: 768px) calc(100vw - 4rem), 420px"
+            }
+            className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.01]"
+            onError={() => {
+              setCandidateIndex((index) => {
+                if (index < srcCandidates.length - 1) {
+                  return index + 1;
+                }
+
+                setImageFailed(true);
+                return index;
+              });
+            }}
+          />
+        )}
+      </div>
+    </a>
+  );
 };
 
 const PostCard = ({
@@ -63,6 +193,7 @@ const PostCard = ({
   comments,
   likes = [],
   reposts = [],
+  media = [],
   isComment,
 }: PostCardProps) => {
   const pathname = usePathname();
@@ -106,6 +237,7 @@ const PostCard = ({
 
   const canDelete = currentUserId === author.id;
   const targetThreadId = threadLinkId || id;
+  const singleMedia = media.length === 1;
 
   const handleDelete = async () => {
     if (!canDelete) return;
@@ -257,6 +389,46 @@ const PostCard = ({
               </ReactMarkdown>
             </div>
           </Link>
+
+          {media.length ? (
+            <div
+              className={`mt-3 mx-auto grid w-full max-w-[920px] gap-2 ${
+                singleMedia ? "grid-cols-1 justify-items-center" : "grid-cols-1 sm:grid-cols-2"
+              }`}
+            >
+              {media.map((item, index) =>
+                item.kind === "image" ? (
+                  <PostMediaImage
+                    key={`${item.providerKey || item.url}-${index}`}
+                    item={item}
+                    singleMedia={singleMedia}
+                  />
+                ) : (
+                  <div
+                    key={`${item.providerKey || item.url}-${index}`}
+                    className={`w-full overflow-hidden rounded-2xl border border-zinc-200 bg-black dark:border-[#1f1f1f] ${
+                      singleMedia ? "col-span-full mx-auto max-w-[920px]" : ""
+                    }`}
+                  >
+                    <div
+                      className={`relative w-full ${
+                        singleMedia ? "min-h-[260px] max-h-[760px]" : "min-h-[190px] max-h-[420px]"
+                      }`}
+                      style={{ aspectRatio: String(getMediaAspectRatio(item)) }}
+                    >
+                      <video
+                        src={item.url}
+                        controls
+                        preload="metadata"
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                  </div>
+                )
+              )}
+            </div>
+          ) : null}
+
           <div className="mt-4 flex items-center gap-6 text-xs text-zinc-500">
             <button
               type="button"

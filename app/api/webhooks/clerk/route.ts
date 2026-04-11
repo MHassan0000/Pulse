@@ -50,7 +50,9 @@ type ClerkUserData = {
 const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "Unknown error";
 
-const logWebhookError = (_eventType: string, _error: unknown) => {};
+const logWebhookError = (...args: unknown[]) => {
+  void args;
+};
 
 const isDatabaseConnectionError = (error: unknown) => {
   const message = getErrorMessage(error).toLowerCase();
