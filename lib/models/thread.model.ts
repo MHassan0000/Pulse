@@ -89,11 +89,11 @@ threadSchema.index({ author: 1, createdAt: -1 });
 threadSchema.index({ community: 1, createdAt: -1 });
 threadSchema.index({ parentId: 1, createdAt: -1 });
 threadSchema.index(
-  { author: 1, createdAt: -1 },
+  { author: 1, "media.0": 1, createdAt: -1 },
   { partialFilterExpression: { "media.0": { $exists: true } } }
 );
 threadSchema.index(
-  { community: 1, createdAt: -1 },
+  { community: 1, "media.0": 1, createdAt: -1 },
   { partialFilterExpression: { "media.0": { $exists: true } } }
 );
 
