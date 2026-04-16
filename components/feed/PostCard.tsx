@@ -157,12 +157,12 @@ const PostMediaImage = ({ item, singleMedia }: { item: PostMedia; singleMedia: b
       target="_blank"
       rel="noreferrer"
       className={`group relative block w-full overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100 dark:border-[#1f1f1f] dark:bg-black ${
-        singleMedia ? "col-span-full mx-auto max-w-[920px]" : ""
+        singleMedia ? "col-span-full mx-auto max-w-230" : ""
       }`}
     >
       <div
         className={`relative w-full ${
-          singleMedia ? "min-h-[260px] max-h-[760px]" : "min-h-[190px] max-h-[420px]"
+          singleMedia ? "min-h-65 max-h-190" : "min-h-47.5 max-h-105"
         }`}
         style={{ aspectRatio: String(aspectRatio) }}
       >
@@ -446,7 +446,7 @@ const PostCard = ({
           {media.length ? (
             <div className="mt-3 sm:-ml-7 sm:w-[calc(100%+1.75rem)]">
               <div
-                className={`mx-auto grid w-full max-w-[920px] gap-2 ${
+                className={`mx-auto grid w-full max-w-230 gap-2 ${
                   singleMedia ? "grid-cols-1 justify-items-center" : "grid-cols-1 sm:grid-cols-2"
                 }`}
               >
@@ -461,12 +461,12 @@ const PostCard = ({
                     <div
                       key={`${item.providerKey || item.url}-${index}`}
                       className={`w-full overflow-hidden rounded-2xl border border-zinc-200 bg-black dark:border-[#1f1f1f] ${
-                        singleMedia ? "col-span-full mx-auto max-w-[920px]" : ""
+                        singleMedia ? "col-span-full mx-auto max-w-230" : ""
                       }`}
                     >
                     <div
                       className={`relative w-full ${
-                        singleMedia ? "min-h-[260px] max-h-[760px]" : "min-h-[190px] max-h-[420px]"
+                        singleMedia ? "min-h-65 max-h-190" : "min-h-47.5 max-h-105"
                       }`}
                       style={{ aspectRatio: String(getMediaAspectRatio(item)) }}
                     >
