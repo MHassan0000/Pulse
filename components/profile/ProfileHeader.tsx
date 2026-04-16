@@ -59,7 +59,7 @@ const ProfileHeader = ({
         ) : type === "Community" ? (
           <button
             type="button"
-            className="inline-flex h-9 items-center justify-center rounded-full border border-zinc-900 bg-zinc-900 px-4 text-xs font-semibold text-white transition-all duration-200 hover:bg-black dark:border-white dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+            className="inline-flex h-9 cursor-pointer items-center justify-center rounded-full border border-zinc-900 bg-zinc-900 px-4 text-xs font-semibold text-white transition-all duration-200 hover:bg-black dark:border-white dark:bg-white dark:text-black dark:hover:bg-zinc-200"
           >
             Join community
           </button>

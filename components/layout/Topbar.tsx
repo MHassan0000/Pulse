@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import {
   OrganizationSwitcher,
   ClerkLoaded,
@@ -14,15 +15,18 @@ const Topbar = () => {
   return (
     <header className="fixed top-0 z-50 w-full bg-white dark:bg-black">
       <div className="mx-auto grid h-14 max-w-full grid-cols-3 items-center px-4 md:px-6">
+
         <div className="flex items-center gap-3">
-          <Image
-            src="/images/pulse-logo-new.png"
-            alt="Pulse logo"
-            width={40}
-            height={40}
-            className="h-12 w-12 invert dark:invert-0 hover:scale-110 transition-all duration-400 cursor-pointer"
-            priority
-          />
+          <Link href="/">
+            <Image
+              src="/images/pulse-logo-new.png"
+              alt="Pulse logo"
+              width={40}
+              height={40}
+              className="h-12 w-12 invert dark:invert-0 hover:scale-110 transition-all duration-400 cursor-pointer"
+              priority
+            />
+          </Link>
         </div>
         <div className="text-center text-sm font-semibold text-zinc-900 dark:text-white/90">
           Home

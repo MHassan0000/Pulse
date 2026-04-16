@@ -100,7 +100,7 @@ const Sidebar = () => {
       {menuOpen && (
         <div className="fixed bottom-20 left-20 w-56 rounded-2xl border border-zinc-200 bg-white p-2 shadow-xl dark:border-[#1f1f1f] dark:bg-[#111111] z-30 animate-in fade-in slide-in-from-bottom-4 zoom-in-95 duration-200">
           <button
-            className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-900"
+            className="flex w-full cursor-pointer items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-900"
             onClick={() => setAppearanceOpen((prev) => !prev)}
           >
             <span>Appearance</span>
@@ -118,7 +118,7 @@ const Sidebar = () => {
             <div className="grid gap-1">
               <button
                 className={cn(
-                  "rounded-xl px-3 py-2 text-sm font-medium transition-colors text-left",
+                  "rounded-xl px-3 py-2 text-left text-sm font-medium transition-colors cursor-pointer",
                   theme === "light"
                     ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white"
                     : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900"
@@ -129,7 +129,7 @@ const Sidebar = () => {
               </button>
               <button
                 className={cn(
-                  "rounded-xl px-3 py-2 text-sm font-medium transition-colors text-left",
+                  "rounded-xl px-3 py-2 text-left text-sm font-medium transition-colors cursor-pointer",
                   theme === "dark"
                     ? "bg-zinc-900 text-white dark:bg-zinc-800"
                     : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900"

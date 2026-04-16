@@ -338,7 +338,7 @@ const PostCard = ({
                 <DialogTrigger asChild>
                   <button
                     type="button"
-                    className="text-zinc-500 transition-all duration-200 hover:text-zinc-700 dark:hover:text-zinc-300"
+                    className="cursor-pointer text-zinc-500 transition-all duration-200 hover:text-zinc-700 dark:hover:text-zinc-300"
                   >
                     <MoreHorizontal className="h-4 w-4" />
                   </button>
@@ -435,20 +435,20 @@ const PostCard = ({
                         singleMedia ? "col-span-full mx-auto max-w-[920px]" : ""
                       }`}
                     >
-                      <div
-                        className={`relative w-full ${
-                          singleMedia ? "min-h-[260px] max-h-[760px]" : "min-h-[190px] max-h-[420px]"
-                        }`}
-                        style={{ aspectRatio: String(getMediaAspectRatio(item)) }}
-                      >
-                        <video
-                          src={item.url}
-                          controls
-                          preload="metadata"
-                          className="h-full w-full object-cover"
-                        />
-                      </div>
+                    <div
+                      className={`relative w-full ${
+                        singleMedia ? "min-h-[260px] max-h-[760px]" : "min-h-[190px] max-h-[420px]"
+                      }`}
+                      style={{ aspectRatio: String(getMediaAspectRatio(item)) }}
+                    >
+                      <video
+                        src={item.url}
+                        controls
+                        preload="metadata"
+                        className="h-full w-full object-contain"
+                      />
                     </div>
+                  </div>
                   )
                 )}
               </div>
@@ -460,7 +460,7 @@ const PostCard = ({
               type="button"
               onClick={handleLike}
               disabled={isPending}
-              className={`flex items-center gap-2 transition-all duration-200 ${
+              className={`cursor-pointer flex items-center gap-2 transition-all duration-200 ${
                 likedByCurrentUser
                   ? "text-red-500"
                   : "hover:text-zinc-900 dark:hover:text-white"
@@ -473,7 +473,7 @@ const PostCard = ({
             </button>
             <button
               type="button"
-              className="flex items-center gap-2 transition-all duration-200 hover:text-zinc-900 dark:hover:text-white"
+              className="cursor-pointer flex items-center gap-2 transition-all duration-200 hover:text-zinc-900 dark:hover:text-white"
             >
               <MessageCircle className="h-4 w-4" />
               {stats.replies}
@@ -482,7 +482,7 @@ const PostCard = ({
               type="button"
               onClick={handleRepost}
               disabled={isPending}
-              className={`flex items-center gap-2 transition-all duration-200 ${
+              className={`cursor-pointer flex items-center gap-2 transition-all duration-200 ${
                 repostedByCurrentUser
                   ? "text-emerald-500"
                   : "hover:text-zinc-900 dark:hover:text-white"

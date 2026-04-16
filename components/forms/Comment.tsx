@@ -247,7 +247,7 @@ function Comment({ threadId, currentUserImg, currentUserId }: Props) {
                                 </span>
                                 <button
                                     type="button"
-                                    className="ml-2 rounded-full border border-zinc-200 px-2 py-0.5 text-[10px] text-zinc-600 hover:bg-zinc-100 dark:border-[#1f1f1f] dark:text-zinc-300 dark:hover:bg-zinc-900"
+                                    className="cursor-pointer ml-2 rounded-full border border-zinc-200 px-2 py-0.5 text-[10px] text-zinc-600 hover:bg-zinc-100 dark:border-[#1f1f1f] dark:text-zinc-300 dark:hover:bg-zinc-900"
                                     onClick={() => removeMediaAt(index)}
                                     disabled={isUploading || isSubmitting}
                                 >

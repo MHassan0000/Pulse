@@ -527,24 +527,25 @@ export async function fetchUserRepliesReceived(
       )
     );
 
-    if (!authoredThreadIds.length) {
-      return {
-        id: user.id,
-        name: user.name,
-        image: user.image,
-        threads: [],
-        isNext: false,
-        totalCount: 0,
-      };
+    const replyConditions: mongoose.AnyObject[] = [
+      {
+        author: user._id,
+        parentId: { $nin: [null, undefined, ""] },
+      },
+    ];
+
+    if (authoredThreadIds.length) {
+      replyConditions.push({
+        parentId: { $in: authoredThreadIds },
+        author: { $ne: user._id },
+      });
     }
 
     const query: {
-      parentId: { $in: string[] };
-      author: { $ne: unknown };
+      $or: mongoose.AnyObject[];
       media?: { $exists: true; $ne: [] };
     } = {
-      parentId: { $in: authoredThreadIds },
-      author: { $ne: user._id },
+      $or: replyConditions,
     };
 
     if (onlyWithMedia) {
@@ -620,12 +621,23 @@ export async function fetchUserStats(userId: string) {
       .map((thread) => toIdString(thread._id))
       .filter(Boolean);
 
-    const replyCount = authoredThreadIds.length
-      ? await Thread.countDocuments({
-          parentId: { $in: authoredThreadIds },
-          author: { $ne: user._id },
-        })
-      : 0;
+    const replyCountConditions: mongoose.AnyObject[] = [
+      {
+        author: user._id,
+        parentId: { $nin: [null, undefined, ""] },
+      },
+    ];
+
+    if (authoredThreadIds.length) {
+      replyCountConditions.push({
+        parentId: { $in: authoredThreadIds },
+        author: { $ne: user._id },
+      });
+    }
+
+    const replyCount = await Thread.countDocuments({
+      $or: replyCountConditions,
+    });
 
     return { threadCount, replyCount, mediaCount };
   } catch (error) {

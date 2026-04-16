@@ -24,7 +24,7 @@ const BottomBar = () => {
           <button
             key={index}
             onClick={() => router.push(item.path)}
-            className={`flex h-10 w-10 items-center justify-center rounded-full text-zinc-600 transition-all duration-200 hover:bg-zinc-100 active:scale-95 dark:text-zinc-300 dark:hover:bg-zinc-900 ${(item.path === "/" ? pathname === "/" : pathname.startsWith(item.path)) ? "bg-zinc-200/70 dark:bg-zinc-900/60" : ""
+            className={`flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-zinc-600 transition-all duration-200 hover:bg-zinc-100 active:scale-95 dark:text-zinc-300 dark:hover:bg-zinc-900 ${(item.path === "/" ? pathname === "/" : pathname.startsWith(item.path)) ? "bg-zinc-200/70 dark:bg-zinc-900/60" : ""
               }`}
           >
             <item.icon className="h-5 w-5" />
