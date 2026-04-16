@@ -172,6 +172,7 @@ async function Page({
     <section className="page-scroll relative mx-auto flex h-full w-full max-w-3xl flex-col gap-6 overflow-y-auto px-4 pb-24 pt-10 md:px-6">
       <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-[0_20px_60px_rgba(0,0,0,0.08)] dark:border-[#1f1f1f] dark:bg-[#0f0f0f]">
         <PostCard
+          key={`${threadData.id}:${threadData.likes.join("|")}:${threadData.reposts.join("|")}`}
           id={threadData.id}
           currentUserId={user.id}
           parentId={threadData.parentId}
@@ -211,6 +212,13 @@ async function Page({
                 <span className="h-px flex-1 bg-linear-to-r from-zinc-200/80 to-transparent dark:from-[#2a2a2a]/80" />
               </div>
               <PostCard
+                key={`${childItem._id ? String(childItem._id) : ""}:${Array.isArray(childItem.likes)
+                  ? childItem.likes.map((likedBy: unknown) => String(likedBy)).join("|")
+                  : ""
+                  }:${Array.isArray(childItem.reposts)
+                    ? childItem.reposts.map((repostedBy: unknown) => String(repostedBy)).join("|")
+                    : ""
+                  }`}
                 id={childItem._id ? String(childItem._id) : ""}
                 currentUserId={user.id}
                 parentId={childItem.parentId ?? null}

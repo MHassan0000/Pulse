@@ -23,7 +23,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { useMemo, useOptimistic, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 
 type PostCardProps = {
   id: string;
@@ -215,29 +215,16 @@ const PostCard = ({
 }: PostCardProps) => {
   const pathname = usePathname();
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-
-  const [optimisticLikes, setOptimisticLikes] = useOptimistic(
-    likes,
-    (state, userId: string) =>
-      state.includes(userId)
-        ? state.filter((id) => id !== userId)
-        : [...state, userId]
-  );
-
-  const [optimisticReposts, setOptimisticReposts] = useOptimistic(
-    reposts,
-    (state, userId: string) =>
-      state.includes(userId)
-        ? state.filter((id) => id !== userId)
-        : [...state, userId]
-  );
+  const [isLikePending, startLikeTransition] = useTransition();
+  const [isRepostPending, startRepostTransition] = useTransition();
+  const [likeIds, setLikeIds] = useState<string[]>(() => likes);
+  const [repostIds, setRepostIds] = useState<string[]>(() => reposts);
 
   const replyCount = comments?.length ?? 0;
   const stats = {
-    likes: optimisticLikes.length,
+    likes: likeIds.length,
     replies: replyCount,
-    reposts: optimisticReposts.length,
+    reposts: repostIds.length,
   };
 
   const formattedDate = createdAt
@@ -249,8 +236,8 @@ const PostCard = ({
       })()
     : "";
 
-  const likedByCurrentUser = optimisticLikes.includes(currentUserId);
-  const repostedByCurrentUser = optimisticReposts.includes(currentUserId);
+  const likedByCurrentUser = likeIds.includes(currentUserId);
+  const repostedByCurrentUser = repostIds.includes(currentUserId);
 
   const canDelete = currentUserId === author.id;
   const targetThreadId = threadLinkId || id;
@@ -274,11 +261,32 @@ const PostCard = ({
       return;
     }
 
-    if (isPending) return;
+    if (isLikePending) return;
 
-    startTransition(async () => {
-      setOptimisticLikes(currentUserId);
-      await toggleLikeThread(id, currentUserId, pathname);
+    const previous = likeIds;
+    const next = previous.includes(currentUserId)
+      ? previous.filter((idValue) => idValue !== currentUserId)
+      : [...previous, currentUserId];
+
+    setLikeIds(next);
+
+    startLikeTransition(async () => {
+
+      try {
+        const result = await toggleLikeThread(id, currentUserId, pathname);
+        setLikeIds((state) => {
+          const hasLike = state.includes(currentUserId);
+          if (result.liked === hasLike) {
+            return state;
+          }
+
+          return result.liked
+            ? [...state, currentUserId]
+            : state.filter((idValue) => idValue !== currentUserId);
+        });
+      } catch {
+        setLikeIds(previous);
+      }
     });
   };
 
@@ -288,11 +296,32 @@ const PostCard = ({
       return;
     }
 
-    if (isPending) return;
+    if (isRepostPending) return;
 
-    startTransition(async () => {
-      setOptimisticReposts(currentUserId);
-      await toggleRepostThread(id, currentUserId, pathname);
+    const previous = repostIds;
+    const next = previous.includes(currentUserId)
+      ? previous.filter((idValue) => idValue !== currentUserId)
+      : [...previous, currentUserId];
+
+    setRepostIds(next);
+
+    startRepostTransition(async () => {
+
+      try {
+        const result = await toggleRepostThread(id, currentUserId, pathname);
+        setRepostIds((state) => {
+          const hasRepost = state.includes(currentUserId);
+          if (result.reposted === hasRepost) {
+            return state;
+          }
+
+          return result.reposted
+            ? [...state, currentUserId]
+            : state.filter((idValue) => idValue !== currentUserId);
+        });
+      } catch {
+        setRepostIds(previous);
+      }
     });
   };
 
@@ -459,7 +488,7 @@ const PostCard = ({
             <button
               type="button"
               onClick={handleLike}
-              disabled={isPending}
+              disabled={isLikePending}
               className={`cursor-pointer flex items-center gap-2 transition-all duration-200 ${
                 likedByCurrentUser
                   ? "text-red-500"
@@ -481,7 +510,7 @@ const PostCard = ({
             <button
               type="button"
               onClick={handleRepost}
-              disabled={isPending}
+              disabled={isRepostPending}
               className={`cursor-pointer flex items-center gap-2 transition-all duration-200 ${
                 repostedByCurrentUser
                   ? "text-emerald-500"

@@ -246,7 +246,7 @@ const FeedInfinite = ({
     <div className="divide-y divide-zinc-200 dark:divide-[#2a2a2a]">
       {posts.map((post) => (
         <PostCard
-          key={post.id}
+          key={`${post.id}:${post.likes.join("|")}:${post.reposts.join("|")}`}
           id={post.id}
           currentUserId={currentUserId}
           parentId={post.parentId}

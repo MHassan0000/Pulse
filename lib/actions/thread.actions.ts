@@ -2,6 +2,7 @@
 
 import mongoose from "mongoose";
 import { revalidatePath } from "next/cache";
+import { auth } from "@clerk/nextjs/server";
 
 import { connectToDB } from "../mongoose";
 
@@ -742,46 +743,110 @@ export async function addCommentToThread(
 
 export async function toggleLikeThread(
   threadId: string,
-  userId: string,
-  path: string
+  _userId: string,
+  _path: string
 ) {
+  void _userId;
+  void _path;
+
+  const { userId } = await auth();
+  if (!userId) {
+    throw new Error("Unauthorized");
+  }
+
   await connectToDB();
 
-  const thread = await Thread.findById(threadId);
-  if (!thread) throw new Error("Thread not found");
+  const updated = await Thread.findOneAndUpdate(
+    { _id: threadId },
+    [
+      {
+        $set: {
+          likes: {
+            $let: {
+              vars: { current: { $ifNull: ["$likes", []] } },
+              in: {
+                $cond: [
+                  { $in: [userId, "$$current"] },
+                  {
+                    $filter: {
+                      input: "$$current",
+                      as: "entry",
+                      cond: { $ne: ["$$entry", userId] },
+                    },
+                  },
+                  { $concatArrays: ["$$current", [userId]] },
+                ],
+              },
+            },
+          },
+        },
+      },
+    ],
+    { new: true, updatePipeline: true }
+  )
+    .select("likes")
+    .lean();
 
-  const likes: string[] = Array.isArray(thread.likes)
-    ? thread.likes.map((id: unknown) => String(id))
+  if (!updated) throw new Error("Thread not found");
+
+  const likes = Array.isArray((updated as { likes?: unknown[] }).likes)
+    ? (updated as { likes: unknown[] }).likes.map((id) => String(id))
     : [];
-  const alreadyLiked = likes.includes(userId);
 
-  await Thread.findByIdAndUpdate(threadId, {
-    [alreadyLiked ? "$pull" : "$addToSet"]: { likes: userId },
-  });
-
-  revalidatePath(path);
-  return { liked: !alreadyLiked };
+  return { liked: likes.includes(userId) };
 }
 
 export async function toggleRepostThread(
   threadId: string,
-  userId: string,
-  path: string
+  _userId: string,
+  _path: string
 ) {
+  void _userId;
+  void _path;
+
+  const { userId } = await auth();
+  if (!userId) {
+    throw new Error("Unauthorized");
+  }
+
   await connectToDB();
 
-  const thread = await Thread.findById(threadId);
-  if (!thread) throw new Error("Thread not found");
+  const updated = await Thread.findOneAndUpdate(
+    { _id: threadId },
+    [
+      {
+        $set: {
+          reposts: {
+            $let: {
+              vars: { current: { $ifNull: ["$reposts", []] } },
+              in: {
+                $cond: [
+                  { $in: [userId, "$$current"] },
+                  {
+                    $filter: {
+                      input: "$$current",
+                      as: "entry",
+                      cond: { $ne: ["$$entry", userId] },
+                    },
+                  },
+                  { $concatArrays: ["$$current", [userId]] },
+                ],
+              },
+            },
+          },
+        },
+      },
+    ],
+    { new: true, updatePipeline: true }
+  )
+    .select("reposts")
+    .lean();
 
-  const reposts: string[] = Array.isArray(thread.reposts)
-    ? thread.reposts.map((id: unknown) => String(id))
+  if (!updated) throw new Error("Thread not found");
+
+  const reposts = Array.isArray((updated as { reposts?: unknown[] }).reposts)
+    ? (updated as { reposts: unknown[] }).reposts.map((id) => String(id))
     : [];
-  const alreadyReposted = reposts.includes(userId);
 
-  await Thread.findByIdAndUpdate(threadId, {
-    [alreadyReposted ? "$pull" : "$addToSet"]: { reposts: userId },
-  });
-
-  revalidatePath(path);
-  return { reposted: !alreadyReposted };
+  return { reposted: reposts.includes(userId) };
 }

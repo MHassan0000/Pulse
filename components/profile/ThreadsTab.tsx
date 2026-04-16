@@ -286,6 +286,7 @@ async function ThreadsTab({
             className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-[0_16px_50px_rgba(0,0,0,0.04)] dark:border-[#1f1f1f] dark:bg-[#0f0f0f]"
           >
             <PostCard
+              key={`${thread._id}:${(thread.likes ?? []).join("|")}:${(thread.reposts ?? []).join("|")}`}
               id={thread._id}
               threadLinkId={
                 mode === "replies" && thread.parentId
