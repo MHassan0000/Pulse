@@ -443,7 +443,7 @@ const PostCard = ({
           </Link>
 
           {media.length ? (
-            <div className="mt-3 sm:-ml-7 sm:w-[calc(100%+1.75rem)]">
+            <div className="mt-3 -ml-7 w-full">
               <div
                 className={`mx-auto grid w-full max-w-230 gap-2 ${
                   singleMedia ? "grid-cols-1 justify-items-center" : "grid-cols-1 sm:grid-cols-2"
