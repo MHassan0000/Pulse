@@ -65,7 +65,7 @@ type NormalizedPost = {
     image: string;
   } | null;
   createdAt: string;
-  comments: Array<{ author: { image: string } }>;
+  replyCount: number;
   likes: string[];
   reposts: string[];
   media: NormalizedMedia[];
@@ -134,13 +134,7 @@ const normalizePost = (post: RawPost): NormalizedPost => {
         }
       : null,
     createdAt,
-    comments: Array.isArray(post.children)
-      ? post.children.map((child) => ({
-          author: {
-            image: child?.author?.image ?? "",
-          },
-        }))
-      : [],
+    replyCount: Array.isArray(post.children) ? post.children.length : 0,
     likes: Array.isArray(post.likes) ? post.likes.map((value) => String(value)) : [],
     reposts: Array.isArray(post.reposts)
       ? post.reposts.map((value) => String(value))
@@ -254,7 +248,7 @@ const FeedInfinite = ({
           author={post.author}
           community={post.community}
           createdAt={post.createdAt}
-          comments={post.comments}
+          replyCount={post.replyCount}
           likes={post.likes}
           reposts={post.reposts}
           media={post.media}

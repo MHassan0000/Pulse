@@ -311,7 +311,7 @@ async function ThreadsTab({
                   : thread.community
               }
               createdAt={thread.createdAt}
-              comments={thread.children}
+              replyCount={thread.children.length}
               likes={thread.likes}
               reposts={thread.reposts}
               media={thread.media}

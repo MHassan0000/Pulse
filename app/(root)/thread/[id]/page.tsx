@@ -152,13 +152,7 @@ async function Page({
     createdAt: thread.createdAt
       ? toSafeIsoString(thread.createdAt)
       : "",
-    comments: Array.isArray(thread.children)
-      ? thread.children.map((child: ThreadChild) => ({
-        author: {
-          image: child?.author?.image ?? "",
-        },
-      }))
-      : [],
+    replyCount: Array.isArray(thread.children) ? thread.children.length : 0,
     likes: Array.isArray(thread.likes)
       ? thread.likes.map((likedBy: unknown) => String(likedBy))
       : [],
@@ -180,7 +174,7 @@ async function Page({
           author={threadData.author}
           community={threadData.community}
           createdAt={threadData.createdAt}
-          comments={threadData.comments}
+          replyCount={threadData.replyCount}
           likes={threadData.likes}
           reposts={threadData.reposts}
           media={threadData.media}
@@ -242,15 +236,7 @@ async function Page({
                     ? toSafeIsoString(childItem.createdAt)
                     : ""
                 }
-                comments={
-                  Array.isArray(childItem.children)
-                    ? childItem.children.map((child) => ({
-                      author: {
-                        image: child?.author?.image ?? "",
-                      },
-                    }))
-                    : []
-                }
+                replyCount={Array.isArray(childItem.children) ? childItem.children.length : 0}
                 likes={
                   Array.isArray(childItem.likes)
                     ? childItem.likes.map((likedBy: unknown) => String(likedBy))

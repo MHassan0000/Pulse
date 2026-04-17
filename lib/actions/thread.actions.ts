@@ -66,12 +66,6 @@ type FeedPostCommunity = {
   image: string;
 } | null;
 
-type FeedPostChild = {
-  author: {
-    image: string;
-  };
-};
-
 type FeedPost = {
   _id: string;
   parentId: string | null;
@@ -79,7 +73,7 @@ type FeedPost = {
   createdAt: string;
   author: FeedPostAuthor;
   community: FeedPostCommunity;
-  children: FeedPostChild[];
+  replyCount: number;
   likes: string[];
   reposts: string[];
   media: ThreadMedia[];
@@ -127,6 +121,7 @@ type ThreadDetailNode = {
   parentId: string | null;
   text: string;
   createdAt: string;
+  replyCount: number;
   author: {
     id: string;
     name: string;
@@ -230,7 +225,7 @@ const serializeFeedPost = (post: {
     image?: unknown;
     _id?: unknown;
   } | null;
-  children?: Array<{ author?: { image?: unknown } | null }>;
+  children?: Array<unknown>;
   likes?: unknown[];
   reposts?: unknown[];
   media?: unknown[];
@@ -259,16 +254,7 @@ const serializeFeedPost = (post: {
     createdAt: toIsoDateString(post.createdAt),
     author: serializedAuthor,
     community: serializedCommunity,
-    children: Array.isArray(post.children)
-      ? post.children.map((child) => ({
-          author: {
-            image:
-              typeof child?.author?.image === "string"
-                ? child.author.image
-                : "",
-          },
-        }))
-      : [],
+    replyCount: Array.isArray(post.children) ? post.children.length : 0,
     likes: Array.isArray(post.likes)
       ? post.likes.map((value) => String(value))
       : [],
@@ -303,12 +289,25 @@ const serializeThreadDetailNode = (node: {
 }): ThreadDetailNode => {
   const author = node.author ?? null;
   const community = node.community ?? null;
+  const rawChildren = Array.isArray(node.children) ? node.children : [];
+  const hydratedChildren = rawChildren.filter(
+    (child): child is Record<string, unknown> =>
+      Boolean(child) &&
+      typeof child === "object" &&
+      (
+        "text" in (child as Record<string, unknown>) ||
+        "author" in (child as Record<string, unknown>) ||
+        "createdAt" in (child as Record<string, unknown>) ||
+        "community" in (child as Record<string, unknown>)
+      )
+  );
 
   return {
     _id: toIdString(node._id),
     parentId: toIdString(node.parentId) || null,
     text: typeof node.text === "string" ? node.text : "",
     createdAt: toIsoDateString(node.createdAt),
+    replyCount: rawChildren.length,
     author: {
       id: toIdString(author?.id) || toIdString(author?._id),
       name: typeof author?.name === "string" ? author.name : "Unknown",
@@ -321,8 +320,8 @@ const serializeThreadDetailNode = (node: {
           image: typeof community.image === "string" ? community.image : "",
         }
       : null,
-    children: Array.isArray(node.children)
-      ? node.children.map((child) =>
+    children: hydratedChildren.length
+      ? hydratedChildren.map((child) =>
           serializeThreadDetailNode(
             child as {
               _id?: unknown;
@@ -383,6 +382,7 @@ export async function fetchPostsCursor({
   }
 
   const posts = await Thread.find(query)
+    .select("_id parentId text createdAt author community children likes reposts media")
     .sort({ _id: -1 })
     .limit(normalizedPageSize + 1)
     .populate({
@@ -394,14 +394,6 @@ export async function fetchPostsCursor({
       path: "community",
       model: Community,
       select: "_id id name image",
-    })
-    .populate({
-      path: "children",
-      populate: {
-        path: "author",
-        model: User,
-        select: "_id name parentId image",
-      },
     })
     .lean();
 
@@ -425,7 +417,7 @@ export async function fetchPostsCursor({
         image?: unknown;
         _id?: unknown;
       } | null;
-      children?: Array<{ author?: { image?: unknown } | null }>;
+      children?: Array<unknown>;
       likes?: unknown[];
       reposts?: unknown[];
       media?: unknown[];
@@ -505,21 +497,37 @@ export async function createThread({
 
 async function fetchAllChildThreads(threadId: string): Promise<DescendantThread[]> {
   await connectToDB();
-  const childThreads = await Thread.find({ parentId: threadId }).lean();
 
-  const descendantThreads: DescendantThread[] = [];
-  for (const childThread of childThreads) {
-    const childThreadId =
-      typeof childThread._id === "string"
-        ? childThread._id
-        : childThread._id?.toString?.() ?? "";
-    const descendants = childThreadId
-      ? await fetchAllChildThreads(childThreadId)
-      : [];
-    descendantThreads.push(childThread, ...descendants);
+  const descendants: DescendantThread[] = [];
+  const visited = new Set<string>([threadId]);
+  let frontier = [threadId];
+
+  while (frontier.length) {
+    const levelThreads = await Thread.find({ parentId: { $in: frontier } })
+      .select("_id author community parentId")
+      .lean();
+
+    if (!levelThreads.length) {
+      break;
+    }
+
+    const nextFrontier: string[] = [];
+
+    for (const thread of levelThreads as DescendantThread[]) {
+      const nextId = toIdString(thread._id);
+      if (!nextId || visited.has(nextId)) {
+        continue;
+      }
+
+      visited.add(nextId);
+      descendants.push(thread);
+      nextFrontier.push(nextId);
+    }
+
+    frontier = nextFrontier;
   }
 
-  return descendantThreads;
+  return descendants;
 }
 
 export async function deleteThread(
@@ -607,6 +615,7 @@ export async function fetchThreadById(threadId: string) {
     const normalizedId =
       threadId?.match?.(/[a-f0-9]{24}/i)?.[0] ?? threadId;
     const thread = await Thread.findById(normalizedId)
+      .select("_id parentId text createdAt author community children likes reposts media")
       .populate({
         path: "author",
         model: User,
@@ -619,36 +628,21 @@ export async function fetchThreadById(threadId: string) {
       }) // Populate the community field with _id and name
       .populate({
         path: "children", // Populate the children field
+        model: Thread,
+        select: "_id parentId text createdAt author community children likes reposts media",
+        options: { sort: { createdAt: -1 } },
         populate: [
           {
             path: "author", // Populate the author field within children
             model: User,
-            select: "_id id name parentId image", // Select only _id and username fields of the author
+            select: "_id id name image", // Select only _id and username fields of the author
           },
           {
-            path: "children", // Populate the children field within children
-            model: Thread, // The model of the nested children (assuming it's the same "Thread" model)
-            populate: {
-              path: "author", // Populate the author field within nested children
-              model: User,
-              select: "_id id name parentId image", // Select only _id and username fields of the author
-            },
+            path: "community",
+            model: Community,
+            select: "_id id name image",
           },
         ],
-      })
-      .populate({
-        path: "children",
-        populate: {
-          path: "children",
-          populate: {
-            path: "children",
-            populate: {
-              path: "author",
-              model: User,
-              select: "_id id name parentId image",
-            },
-          },
-        },
       })
       .lean()
       .exec();

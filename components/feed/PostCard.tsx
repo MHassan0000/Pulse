@@ -23,7 +23,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { useMemo, useState, useTransition } from "react";
+import { memo, useMemo, useState, useTransition } from "react";
 
 type PostCardProps = {
   id: string;
@@ -42,11 +42,7 @@ type PostCardProps = {
     image: string;
   } | null;
   createdAt: string;
-  comments: {
-    author: {
-      image: string;
-    };
-  }[];
+  replyCount?: number;
   likes?: string[];
   reposts?: string[];
   media?: {
@@ -207,7 +203,7 @@ const PostCard = ({
   community,
   createdAt,
   content,
-  comments,
+  replyCount = 0,
   likes = [],
   reposts = [],
   media = [],
@@ -220,10 +216,13 @@ const PostCard = ({
   const [likeIds, setLikeIds] = useState<string[]>(() => likes);
   const [repostIds, setRepostIds] = useState<string[]>(() => reposts);
 
-  const replyCount = comments?.length ?? 0;
+  const safeReplyCount =
+    typeof replyCount === "number" && Number.isFinite(replyCount) && replyCount >= 0
+      ? Math.floor(replyCount)
+      : 0;
   const stats = {
     likes: likeIds.length,
-    replies: replyCount,
+    replies: safeReplyCount,
     reposts: repostIds.length,
   };
 
@@ -547,4 +546,7 @@ const PostCard = ({
   );
 };
 
-export default PostCard;
+const MemoizedPostCard = memo(PostCard);
+MemoizedPostCard.displayName = "PostCard";
+
+export default MemoizedPostCard;
